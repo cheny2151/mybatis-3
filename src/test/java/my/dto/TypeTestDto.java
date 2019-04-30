@@ -21,4 +21,8 @@ public class TypeTestDto<T,R> {
     public T getT() {
         return (T) new Object();
     }
+
+    public R getR() {
+        return (R) new Object();
+    }
 }
