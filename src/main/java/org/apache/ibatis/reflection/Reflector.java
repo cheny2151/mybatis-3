@@ -84,18 +84,23 @@ public class Reflector {
 
   private void addGetMethods(Class<?> cls) {
     Map<String, List<Method>> conflictingGetters = new HashMap<>();
+    //获取类所有方法
     Method[] methods = getClassMethods(cls);
     for (Method method : methods) {
+      //get方法无参数
       if (method.getParameterTypes().length > 0) {
         continue;
       }
       String name = method.getName();
+      //过滤get和is开头的方法
       if ((name.startsWith("get") && name.length() > 3)
           || (name.startsWith("is") && name.length() > 2)) {
         name = PropertyNamer.methodToProperty(name);
+        //将属性名和对应方法添加到conflictingGetters集合中
         addMethodConflict(conflictingGetters, name, method);
       }
     }
+    //将符合的方法选取最优的一个放入getMethods(解决冲突)
     resolveGetterConflicts(conflictingGetters);
   }
 
@@ -111,17 +116,20 @@ public class Reflector {
         Class<?> winnerType = winner.getReturnType();
         Class<?> candidateType = candidate.getReturnType();
         if (candidateType.equals(winnerType)) {
+          //只有布尔类型可能存在返回类型相同还出现冲突的方法
           if (!boolean.class.equals(candidateType)) {
             throw new ReflectionException(
                 "Illegal overloaded getter method with ambiguous type for property "
                     + propName + " in class " + winner.getDeclaringClass()
                     + ". This breaks the JavaBeans specification and can cause unpredictable results.");
           } else if (candidate.getName().startsWith("is")) {
+            //布尔类型优先获取is开头的方法
             winner = candidate;
           }
         } else if (candidateType.isAssignableFrom(winnerType)) {
           // OK getter type is descendant
         } else if (winnerType.isAssignableFrom(candidateType)) {
+          //优先获取返回类型子类
           winner = candidate;
         } else {
           throw new ReflectionException(
@@ -311,11 +319,13 @@ public class Reflector {
 
   private void addUniqueMethods(Map<String, Method> uniqueMethods, Method[] methods) {
     for (Method currentMethod : methods) {
+      //跳过桥接方法,详情见https://www.zhihu.com/question/54895701/answer/141623158
       if (!currentMethod.isBridge()) {
         String signature = getSignature(currentMethod);
         // check to see if the method is already known
         // if it is known, then an extended class must have
         // overridden a method
+        //不存在此签名则添加该方法的映射关系
         if (!uniqueMethods.containsKey(signature)) {
           uniqueMethods.put(signature, currentMethod);
         }
@@ -323,6 +333,11 @@ public class Reflector {
     }
   }
 
+  /**
+   * 获取方法签名: ${returnType}#${methodName}:${arg1},${arg2}
+   * @param method
+   * @return
+   */
   private String getSignature(Method method) {
     StringBuilder sb = new StringBuilder();
     Class<?> returnType = method.getReturnType();
