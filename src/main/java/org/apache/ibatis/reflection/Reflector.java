@@ -179,7 +179,7 @@ public class Reflector {
       for (Method setter : setters) {
         Class<?> paramType = setter.getParameterTypes()[0];
         if (paramType.equals(getterType)) {
-          // should be the best match
+          // 最优选择与getterType相同的方法
           match = setter;
           break;
         }
@@ -254,6 +254,7 @@ public class Reflector {
         // modification of final fields through reflection (JSR-133). (JGB)
         // pr #16 - final static can only be set by the classloader
         int modifiers = field.getModifiers();
+        //final与static修饰的属性不添加到setField中(getField可以)
         if (!(Modifier.isFinal(modifiers) && Modifier.isStatic(modifiers))) {
           addSetField(field);
         }
@@ -262,6 +263,7 @@ public class Reflector {
         addGetField(field);
       }
     }
+    //递归所有父类
     if (clazz.getSuperclass() != null) {
       addFields(clazz.getSuperclass());
     }
