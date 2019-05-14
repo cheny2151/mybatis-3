@@ -15,14 +15,7 @@
  */
 package org.apache.ibatis.reflection;
 
-import java.lang.reflect.Array;
-import java.lang.reflect.Field;
-import java.lang.reflect.GenericArrayType;
-import java.lang.reflect.Method;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
-import java.lang.reflect.TypeVariable;
-import java.lang.reflect.WildcardType;
+import java.lang.reflect.*;
 import java.util.Arrays;
 
 /**
@@ -146,6 +139,9 @@ public class TypeParameterResolver {
     }
 
     if (clazz == declaringClass) {
+      // getBounds
+      // 获得该类型变量的上限，也就是泛型中extend右边的值；例如 List<T extends Number> ，
+      // Number就是类型变量T的上限；如果我们只是简单的声明了List<T>（无显式定义extends），那么默认为Object
       Type[] bounds = typeVar.getBounds();
       if (bounds.length > 0) {
         return bounds[0];

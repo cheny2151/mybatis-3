@@ -126,4 +126,13 @@ public class TypeTest {
         }
 
     }
+
+    @Test
+    public void test6() throws NoSuchMethodException {
+        Method getT = TypeTestDto2.class.getMethod("getT");
+        Type genericReturnType = getT.getGenericReturnType();
+        for (Type t : ((TypeVariable) genericReturnType).getBounds()) {
+            System.out.println(t);
+        }
+    }
 }
