@@ -26,6 +26,8 @@ import java.util.Properties;
 public interface ObjectFactory {
 
   /**
+   * 设置系统配置
+   *
    * Sets configuration properties.
    * @param properties configuration properties
    */

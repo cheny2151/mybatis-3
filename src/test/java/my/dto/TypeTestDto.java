@@ -10,6 +10,8 @@ import java.util.List;
  */
 public class TypeTestDto<T,R> {
 
+    public T[] arrayT;
+
     public void someMethod() {
 
     }

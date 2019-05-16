@@ -480,7 +480,11 @@ public class Reflector {
     return getMethods.keySet().contains(propertyName);
   }
 
+  /**
+   * 通过忽略大小写属性名获取真实属性名
+   */
   public String findPropertyName(String name) {
     return caseInsensitivePropertyMap.get(name.toUpperCase(Locale.ENGLISH));
   }
+
 }

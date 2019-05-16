@@ -4,6 +4,7 @@ import my.dto.TypeTestDto;
 import my.dto.TypeTestDto2;
 import my.dto.TypeTestDto3;
 import org.apache.ibatis.domain.jpetstore.Cart;
+import org.apache.ibatis.reflection.TypeParameterResolver;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Method;
@@ -128,11 +129,8 @@ public class TypeTest {
     }
 
     @Test
-    public void test6() throws NoSuchMethodException {
-        Method getT = TypeTestDto2.class.getMethod("getT");
-        Type genericReturnType = getT.getGenericReturnType();
-        for (Type t : ((TypeVariable) genericReturnType).getBounds()) {
-            System.out.println(t);
-        }
+    public void test6() throws NoSuchMethodException, NoSuchFieldException {
+        Type arrayT = TypeParameterResolver.resolveFieldType(TypeTestDto.class.getField("arrayT"), TypeTestDto2.class);
+        System.out.println(arrayT);
     }
 }
