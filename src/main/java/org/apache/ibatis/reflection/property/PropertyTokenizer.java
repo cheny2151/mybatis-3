@@ -21,8 +21,12 @@ import java.util.Iterator;
  * @author Clinton Begin
  */
 public class PropertyTokenizer implements Iterator<PropertyTokenizer> {
+
+  //属性名（不包含index）
   private String name;
+  //属性名（包含index）
   private final String indexedName;
+  //index（若存在[]）
   private String index;
   private final String children;
 
