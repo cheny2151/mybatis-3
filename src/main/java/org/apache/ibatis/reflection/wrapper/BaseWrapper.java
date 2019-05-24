@@ -15,26 +15,34 @@
  */
 package org.apache.ibatis.reflection.wrapper;
 
-import java.util.List;
-import java.util.Map;
-
 import org.apache.ibatis.reflection.MetaObject;
 import org.apache.ibatis.reflection.ReflectionException;
 import org.apache.ibatis.reflection.property.PropertyTokenizer;
+
+import java.util.List;
+import java.util.Map;
 
 /**
  * @author Clinton Begin
  */
 public abstract class BaseWrapper implements ObjectWrapper {
 
+  // 定义无参数的常量
   protected static final Object[] NO_ARGUMENTS = new Object[0];
+  //目标对象对应的MetaObject,注意是final类型
   protected final MetaObject metaObject;
 
   protected BaseWrapper(MetaObject metaObject) {
     this.metaObject = metaObject;
   }
 
+  /**
+   * @param prop   PropertyTokenizer
+   * @param object 操作的对象
+   * @return
+   */
   protected Object resolveCollection(PropertyTokenizer prop, Object object) {
+    //若分词中name为空，则直接返回操作的对象
     if ("".equals(prop.getName())) {
       return object;
     } else {

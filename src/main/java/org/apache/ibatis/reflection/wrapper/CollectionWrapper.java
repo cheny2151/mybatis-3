@@ -15,18 +15,21 @@
  */
 package org.apache.ibatis.reflection.wrapper;
 
-import java.util.Collection;
-import java.util.List;
-
 import org.apache.ibatis.reflection.MetaObject;
 import org.apache.ibatis.reflection.factory.ObjectFactory;
 import org.apache.ibatis.reflection.property.PropertyTokenizer;
+
+import java.util.Collection;
+import java.util.List;
 
 /**
  * @author Clinton Begin
  */
 public class CollectionWrapper implements ObjectWrapper {
 
+  /**
+   * 存放要操作的数据
+   */
   private final Collection<Object> object;
 
   public CollectionWrapper(MetaObject metaObject, Collection<Object> object) {
