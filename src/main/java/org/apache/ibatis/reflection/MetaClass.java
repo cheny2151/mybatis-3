@@ -15,16 +15,16 @@
  */
 package org.apache.ibatis.reflection;
 
+import org.apache.ibatis.reflection.invoker.GetFieldInvoker;
+import org.apache.ibatis.reflection.invoker.Invoker;
+import org.apache.ibatis.reflection.invoker.MethodInvoker;
+import org.apache.ibatis.reflection.property.PropertyTokenizer;
+
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.Collection;
-
-import org.apache.ibatis.reflection.invoker.GetFieldInvoker;
-import org.apache.ibatis.reflection.invoker.Invoker;
-import org.apache.ibatis.reflection.invoker.MethodInvoker;
-import org.apache.ibatis.reflection.property.PropertyTokenizer;
 
 /**
  * @author Clinton Begin
@@ -43,6 +43,12 @@ public class MetaClass {
     return new MetaClass(type, reflectorFactory);
   }
 
+  /**
+   * 获取当前reflector对应的Type的属性的MetaClass
+   *
+   * @param name 属性名
+   * @return 属性对应Type的MetaClass
+   */
   public MetaClass metaClassForProperty(String name) {
     Class<?> propType = reflector.getGetterType(name);
     return MetaClass.forClass(propType, reflectorFactory);
@@ -53,6 +59,17 @@ public class MetaClass {
     return prop.length() > 0 ? prop.toString() : null;
   }
 
+  /**
+   *
+   * 将包含index的属性分词转为只包含属性名的分词，并且期间通过忽略大小写获取到真实的属性名
+   * 例: a.b[2].c --> a.b.c
+   *
+   * @param name 属性名(支持.分词)
+   * @param useCamelCaseMapping 下划线转为空(后续调用获取属性名忽略大小写，所以为'',
+   *                            详情见@link:Reflector.caseInsensitivePropertyMap)
+   *
+   * @return 属性名a.属性名b.属性名c...
+   */
   public String findProperty(String name, boolean useCamelCaseMapping) {
     if (useCamelCaseMapping) {
       name = name.replace("_", "");
@@ -81,7 +98,9 @@ public class MetaClass {
   public Class<?> getGetterType(String name) {
     PropertyTokenizer prop = new PropertyTokenizer(name);
     if (prop.hasNext()) {
+      //hasNext,属性的MetaClass
       MetaClass metaProp = metaClassForProperty(prop);
+      //递归：再通过该属性的MetaClass调用getGetterType(childName)实现递归
       return metaProp.getGetterType(prop.getChildren());
     }
     // issue #506. Resolve the type inside a Collection Object
@@ -93,17 +112,31 @@ public class MetaClass {
     return MetaClass.forClass(propType, reflectorFactory);
   }
 
+  /**
+   * 获取PropertyTokenizer首个属性(name)的class，若属性为Collection类型则获取集合所存的实际类型
+   * 注意：因为Reflect里getTypes集合中存的val是'最外层'的类型
+   * 比如List<T>存的是List而不是T（详情见Reflect.typeToClass）
+   *
+   * @param prop PropertyTokenizer
+   * @return 实际class(若泛型未被擦除则有可能是T之类的)
+   */
   private Class<?> getGetterType(PropertyTokenizer prop) {
     Class<?> type = reflector.getGetterType(prop.getName());
+    //若属性是Collection类型的需要做处理获取集合所存的实际类型，否则即为实际类型直接返回
     if (prop.getIndex() != null && Collection.class.isAssignableFrom(type)) {
+      //此处调用getGenericGetterType返回集合的类型ParameterizedType
       Type returnType = getGenericGetterType(prop.getName());
       if (returnType instanceof ParameterizedType) {
+        //获取ParameterizedType泛型参数getActualTypeArguments
         Type[] actualTypeArguments = ((ParameterizedType) returnType).getActualTypeArguments();
+        //由于是Collection，所以正确流程下泛型参数应该只有一个
         if (actualTypeArguments != null && actualTypeArguments.length == 1) {
           returnType = actualTypeArguments[0];
           if (returnType instanceof Class) {
+            //该泛型参数为class类直接返回
             type = (Class<?>) returnType;
           } else if (returnType instanceof ParameterizedType) {
+            //该泛型参数为ParameterizedType类返回rawType
             type = (Class<?>) ((ParameterizedType) returnType).getRawType();
           }
         }
@@ -170,11 +203,14 @@ public class MetaClass {
   private StringBuilder buildProperty(String name, StringBuilder builder) {
     PropertyTokenizer prop = new PropertyTokenizer(name);
     if (prop.hasNext()) {
+      //忽略大小写获取真实属性名(Reflector.caseInsensitivePropertyMap)
       String propertyName = reflector.findPropertyName(prop.getName());
       if (propertyName != null) {
         builder.append(propertyName);
         builder.append(".");
+        //调用metaClassForProperty获取属性的MetaClass对象
         MetaClass metaProp = metaClassForProperty(propertyName);
+        //递归：通过属性的MetaClass调用buildProperty实现递归,直到hasNext为false时结束递归
         metaProp.buildProperty(prop.getChildren(), builder);
       }
     } else {
