@@ -31,7 +31,9 @@ import org.apache.ibatis.reflection.property.PropertyTokenizer;
  */
 public class BeanWrapper extends BaseWrapper {
 
+  // 操作的对象
   private final Object object;
+  // 对象对应的MetaClass
   private final MetaClass metaClass;
 
   public BeanWrapper(MetaObject metaObject, Object object) {
@@ -40,10 +42,18 @@ public class BeanWrapper extends BaseWrapper {
     this.metaClass = MetaClass.forClass(object.getClass(), metaObject.getReflectorFactory());
   }
 
+  /**
+   * 获取PropertyTokenizer中name属性的值
+   *
+   * @param prop PropertyTokenizer
+   * @return name属性的值
+   */
   @Override
   public Object get(PropertyTokenizer prop) {
     if (prop.getIndex() != null) {
+      // 调用父类BaseWrapper的resolveCollection方法获取集合属性
       Object collection = resolveCollection(prop, object);
+      // 再调用父类BaseWrapper的getCollectionValue方法获取集合属性中index位置的值
       return getCollectionValue(prop, collection);
     } else {
       return getBeanProperty(prop, object);
@@ -159,8 +169,10 @@ public class BeanWrapper extends BaseWrapper {
 
   private Object getBeanProperty(PropertyTokenizer prop, Object object) {
     try {
+      // 通过metaClass调用reflector获取name属性名对应的getInvoker
       Invoker method = metaClass.getGetInvoker(prop.getName());
       try {
+        // 调用该get方法获取属性值
         return method.invoke(object, NO_ARGUMENTS);
       } catch (Throwable t) {
         throw ExceptionUtil.unwrapThrowable(t);
@@ -168,6 +180,7 @@ public class BeanWrapper extends BaseWrapper {
     } catch (RuntimeException e) {
       throw e;
     } catch (Throwable t) {
+      // 将异常转为RuntimeException
       throw new ReflectionException("Could not get property '" + prop.getName() + "' from " + object.getClass() + ".  Cause: " + t.toString(), t);
     }
   }
