@@ -15,17 +15,13 @@
  */
 package org.apache.ibatis.reflection;
 
+import org.apache.ibatis.reflection.factory.ObjectFactory;
+import org.apache.ibatis.reflection.property.PropertyTokenizer;
+import org.apache.ibatis.reflection.wrapper.*;
+
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-
-import org.apache.ibatis.reflection.factory.ObjectFactory;
-import org.apache.ibatis.reflection.property.PropertyTokenizer;
-import org.apache.ibatis.reflection.wrapper.BeanWrapper;
-import org.apache.ibatis.reflection.wrapper.CollectionWrapper;
-import org.apache.ibatis.reflection.wrapper.MapWrapper;
-import org.apache.ibatis.reflection.wrapper.ObjectWrapper;
-import org.apache.ibatis.reflection.wrapper.ObjectWrapperFactory;
 
 /**
  * @author Clinton Begin
@@ -109,13 +105,21 @@ public class MetaObject {
     return objectWrapper.hasGetter(name);
   }
 
+  /**
+   * 获取属性名name尾部属性的值
+   *
+   * @param name 可带分词属性名
+   */
   public Object getValue(String name) {
     PropertyTokenizer prop = new PropertyTokenizer(name);
     if (prop.hasNext()) {
+      // 获取头部属性的MetaObject(最终调用objectWrapper.get(prop)获取到值，再调用MetaObject.forObject(...)获取到MetaObject)
       MetaObject metaValue = metaObjectForProperty(prop.getIndexedName());
       if (metaValue == SystemMetaObject.NULL_META_OBJECT) {
+        //递归过程中有任意一次获取属性为null，则直接返回null
         return null;
       } else {
+        // 递归：通过上方获取到头部的MetaObject对象，调用getValue递归获取children属性
         return metaValue.getValue(prop.getChildren());
       }
     } else {
@@ -141,8 +145,13 @@ public class MetaObject {
     }
   }
 
+  /**
+   * 获取name属性的值，生成对应的MetaObject返回
+   */
   public MetaObject metaObjectForProperty(String name) {
+    //获取属性name(可分词)的值
     Object value = getValue(name);
+    //通过value生成对应的MetaObject
     return MetaObject.forObject(value, objectFactory, objectWrapperFactory, reflectorFactory);
   }
 

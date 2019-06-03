@@ -15,16 +15,12 @@
  */
 package org.apache.ibatis.reflection.wrapper;
 
-import java.util.List;
-
-import org.apache.ibatis.reflection.ExceptionUtil;
-import org.apache.ibatis.reflection.MetaClass;
-import org.apache.ibatis.reflection.MetaObject;
-import org.apache.ibatis.reflection.ReflectionException;
-import org.apache.ibatis.reflection.SystemMetaObject;
+import org.apache.ibatis.reflection.*;
 import org.apache.ibatis.reflection.factory.ObjectFactory;
 import org.apache.ibatis.reflection.invoker.Invoker;
 import org.apache.ibatis.reflection.property.PropertyTokenizer;
+
+import java.util.List;
 
 /**
  * @author Clinton Begin
@@ -85,17 +81,28 @@ public class BeanWrapper extends BaseWrapper {
     return metaClass.getSetterNames();
   }
 
+  /**
+   * 获取分词尾部字段的Class
+   * 中间属性的类型优先使用MetaObject获取，因为例如Map要获取到实际Value的值才能获取到对应值得属性
+   *
+   * @param name 分词属性名
+   * @return 尾部属性Class
+   */
   @Override
   public Class<?> getSetterType(String name) {
     PropertyTokenizer prop = new PropertyTokenizer(name);
     if (prop.hasNext()) {
+      // 调用MetaObject获取name头部属性值，若成功则通过值获取类型，失败则通过Class获取类型
       MetaObject metaValue = metaObject.metaObjectForProperty(prop.getIndexedName());
       if (metaValue == SystemMetaObject.NULL_META_OBJECT) {
+        // 调用MetaClass通过Class获取中间属性的类型
         return metaClass.getSetterType(name);
       } else {
+        // 通过值获取中间属性的类型
         return metaValue.getSetterType(prop.getChildren());
       }
     } else {
+      // 无论通过哪种方式，最尾部的都是通过class获取
       return metaClass.getSetterType(name);
     }
   }
