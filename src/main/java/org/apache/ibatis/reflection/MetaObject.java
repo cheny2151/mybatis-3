@@ -28,7 +28,9 @@ import java.util.Map;
  */
 public class MetaObject {
 
+  // 操作的对象
   private final Object originalObject;
+  // originalObject对应的ObjectWrapper实现类
   private final ObjectWrapper objectWrapper;
   private final ObjectFactory objectFactory;
   private final ObjectWrapperFactory objectWrapperFactory;
@@ -40,9 +42,11 @@ public class MetaObject {
     this.objectWrapperFactory = objectWrapperFactory;
     this.reflectorFactory = reflectorFactory;
 
+    // 根据object的类型赋予objectWrapper对应的实现类
     if (object instanceof ObjectWrapper) {
       this.objectWrapper = (ObjectWrapper) object;
     } else if (objectWrapperFactory.hasWrapperFor(object)) {
+      // DefaultObjectWrapperFactory.hasWrapperFor(object) always is false
       this.objectWrapper = objectWrapperFactory.getWrapperFor(this, object);
     } else if (object instanceof Map) {
       this.objectWrapper = new MapWrapper(this, (Map) object);
@@ -127,20 +131,30 @@ public class MetaObject {
     }
   }
 
+    /**
+     * 设置属性名name尾部属性的值
+     *
+     * @param name  可带分词属性名
+     * @param value 待设置的值
+     */
   public void setValue(String name, Object value) {
     PropertyTokenizer prop = new PropertyTokenizer(name);
     if (prop.hasNext()) {
+      // 递归：获取中间值MetaValue，传递value
       MetaObject metaValue = metaObjectForProperty(prop.getIndexedName());
       if (metaValue == SystemMetaObject.NULL_META_OBJECT) {
         if (value == null) {
           // don't instantiate child path if value is null
           return;
         } else {
+          // metaValue为null，设置的value不为null时，创建一个新的对象作为容器
           metaValue = objectWrapper.instantiatePropertyValue(name, prop, objectFactory);
         }
       }
+      // 递归开始
       metaValue.setValue(prop.getChildren(), value);
     } else {
+      // 最后一步：成功的将value设置到
       objectWrapper.set(prop, value);
     }
   }

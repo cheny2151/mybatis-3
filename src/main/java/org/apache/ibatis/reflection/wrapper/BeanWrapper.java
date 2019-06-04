@@ -160,6 +160,14 @@ public class BeanWrapper extends BaseWrapper {
     }
   }
 
+  /**
+   * 通过反射创建prop首部属性对应的对象，并设置到基础变量object的对应属性中
+   *
+   * @param name          属性名（无用）
+   * @param prop          PropertyTokenizer
+   * @param objectFactory 创建对象的工厂
+   * @return 创建的对象对应的MetaObject
+   */
   @Override
   public MetaObject instantiatePropertyValue(String name, PropertyTokenizer prop, ObjectFactory objectFactory) {
     MetaObject metaValue;
