@@ -32,6 +32,12 @@ public class ParamNameUtil {
     return getParameterNames(constructor);
   }
 
+  /**
+   * 获取参数名
+   *
+   * @param executable Executable为Method和Constructor的父类
+   * @return 参数名list
+   */
   private static List<String> getParameterNames(Executable executable) {
     return Arrays.stream(executable.getParameters()).map(Parameter::getName).collect(Collectors.toList());
   }

@@ -15,18 +15,18 @@
  */
 package org.apache.ibatis.reflection;
 
+import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.binding.MapperMethod.ParamMap;
+import org.apache.ibatis.session.Configuration;
+import org.apache.ibatis.session.ResultHandler;
+import org.apache.ibatis.session.RowBounds;
+
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
-
-import org.apache.ibatis.annotations.Param;
-import org.apache.ibatis.binding.MapperMethod.ParamMap;
-import org.apache.ibatis.session.Configuration;
-import org.apache.ibatis.session.ResultHandler;
-import org.apache.ibatis.session.RowBounds;
 
 public class ParamNameResolver {
 
@@ -44,6 +44,8 @@ public class ParamNameResolver {
    * <li>aMethod(int a, int b) -&gt; {{0, "0"}, {1, "1"}}</li>
    * <li>aMethod(int a, RowBounds rb, int b) -&gt; {{0, "0"}, {2, "1"}}</li>
    * </ul>
+   *
+   * key为参数在方法上的index，value为参数name(用于xml上引用的名字)
    */
   private final SortedMap<Integer, String> names;
 
@@ -56,12 +58,14 @@ public class ParamNameResolver {
     int paramCount = paramAnnotations.length;
     // get names from @Param annotations
     for (int paramIndex = 0; paramIndex < paramCount; paramIndex++) {
+      // 跳过RowBounds和ResultHandler的参数
       if (isSpecialParameter(paramTypes[paramIndex])) {
         // skip special parameters
         continue;
       }
       String name = null;
       for (Annotation annotation : paramAnnotations[paramIndex]) {
+        // 存在@Param注解
         if (annotation instanceof Param) {
           hasParamAnnotation = true;
           name = ((Param) annotation).value();
@@ -69,21 +73,27 @@ public class ParamNameResolver {
         }
       }
       if (name == null) {
-        // @Param was not specified.
+        // 不存在@Param。@Param was not specified.
         if (config.isUseActualParamName()) {
+          // 配置了使用真实参数名
           name = getActualParamName(method, paramIndex);
         }
         if (name == null) {
-          // use the parameter index as the name ("0", "1", ...)
+          // 使用有效参数index作为value。use the parameter index as the name ("0", "1", ...)
           // gcode issue #71
           name = String.valueOf(map.size());
         }
       }
+      // key为参数在方法上的index，value为参数name(用于xml上引用的名字)
       map.put(paramIndex, name);
     }
+    // 返回一个UnmodifiableSortedMap，无法修改key，value。
     names = Collections.unmodifiableSortedMap(map);
   }
 
+  /**
+   * 获取index位置参数的真实名字
+   */
   private String getActualParamName(Method method, int paramIndex) {
     return ParamNameUtil.getParamNames(method).get(paramIndex);
   }
@@ -100,6 +110,10 @@ public class ParamNameResolver {
   }
 
   /**
+   * 传入一组参数（调用对应Mapper方法对应的入参的数组），返回mapper.xml中实际使用到的参数集合
+   * 1. 只有一个有效参数并且没有@Param，则直接返回此参数的值
+   * 2. 返回key为参数name和'Param'+index（@Param已经占用则不会overwrite），value为对应参数值的Map集合
+   *
    * <p>
    * A single non-special parameter is returned without a name.
    * Multiple parameters are named using the naming rule.
@@ -112,15 +126,17 @@ public class ParamNameResolver {
     if (args == null || paramCount == 0) {
       return null;
     } else if (!hasParamAnnotation && paramCount == 1) {
+      // 若无@param并且只有一个参数，就直接返回此参数的值
       return args[names.firstKey()];
     } else {
       final Map<String, Object> param = new ParamMap<>();
       int i = 0;
       for (Map.Entry<Integer, String> entry : names.entrySet()) {
+        // key为参数name(之前生成的names的value)，value为实际参数值。
         param.put(entry.getValue(), args[entry.getKey()]);
-        // add generic param names (param1, param2, ...)
+        // Param'+index为key。 add generic param names (param1, param2, ...)
         final String genericParamName = GENERIC_NAME_PREFIX + String.valueOf(i + 1);
-        // ensure not to overwrite parameter named with @Param
+        // @Param已经占用则不会overwrite。ensure not to overwrite parameter named with @Param
         if (!names.containsValue(genericParamName)) {
           param.put(genericParamName, args[entry.getKey()]);
         }
