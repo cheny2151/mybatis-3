@@ -25,12 +25,17 @@ public class PoolState {
 
   protected PooledDataSource dataSource;
 
+  // 空间连接
   protected final List<PooledConnection> idleConnections = new ArrayList<>();
+  // 活动连接
   protected final List<PooledConnection> activeConnections = new ArrayList<>();
   protected long requestCount = 0;
   protected long accumulatedRequestTime = 0;
+  // 累计checkout时间
   protected long accumulatedCheckoutTime = 0;
+  // 记录声明连接过期的次数
   protected long claimedOverdueConnectionCount = 0;
+  // 累计过期连接的checkout时间
   protected long accumulatedCheckoutTimeOfOverdueConnections = 0;
   protected long accumulatedWaitTime = 0;
   protected long hadToWaitCount = 0;

@@ -15,21 +15,16 @@
  */
 package org.apache.ibatis.datasource.unpooled;
 
+import org.apache.ibatis.io.Resources;
+
+import javax.sql.DataSource;
 import java.io.PrintWriter;
-import java.sql.Connection;
-import java.sql.Driver;
-import java.sql.DriverManager;
-import java.sql.DriverPropertyInfo;
-import java.sql.SQLException;
+import java.sql.*;
 import java.util.Enumeration;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
-
-import javax.sql.DataSource;
-
-import org.apache.ibatis.io.Resources;
 
 /**
  * @author Clinton Begin
@@ -39,6 +34,7 @@ public class UnpooledDataSource implements DataSource {
 
   private ClassLoader driverClassLoader;
   private Properties driverProperties;
+  // 存放注册成功的驱动，KEY为驱动全类名，VALUE为驱动
   private static Map<String, Driver> registeredDrivers = new ConcurrentHashMap<>();
 
   private String driver;
@@ -50,6 +46,7 @@ public class UnpooledDataSource implements DataSource {
   private Integer defaultTransactionIsolationLevel;
 
   static {
+    // 初始化已经装载的驱动于Map中
     Enumeration<Driver> drivers = DriverManager.getDrivers();
     while (drivers.hasMoreElements()) {
       Driver driver = drivers.nextElement();
@@ -197,12 +194,18 @@ public class UnpooledDataSource implements DataSource {
   }
 
   private Connection doGetConnection(Properties properties) throws SQLException {
+    // 加载驱动
     initializeDriver();
+    // 获取连接
     Connection connection = DriverManager.getConnection(url, properties);
+    // 配置autoCommit和事务
     configureConnection(connection);
     return connection;
   }
 
+  /**
+   * 若driver未加载则，加载该class并放入registeredDrivers中
+   */
   private synchronized void initializeDriver() throws SQLException {
     if (!registeredDrivers.containsKey(driver)) {
       Class<?> driverType;
@@ -223,6 +226,9 @@ public class UnpooledDataSource implements DataSource {
     }
   }
 
+  /**
+   * 设置自动提交和事务级别
+   */
   private void configureConnection(Connection conn) throws SQLException {
     if (autoCommit != null && autoCommit != conn.getAutoCommit()) {
       conn.setAutoCommit(autoCommit);
@@ -232,6 +238,9 @@ public class UnpooledDataSource implements DataSource {
     }
   }
 
+  /**
+   * 装饰者模式，增强某些方法
+   */
   private static class DriverProxy implements Driver {
     private Driver driver;
 
