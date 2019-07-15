@@ -15,14 +15,14 @@
  */
 package org.apache.ibatis.cache.decorators;
 
+import org.apache.ibatis.cache.Cache;
+import org.apache.ibatis.cache.CacheException;
+
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantLock;
-
-import org.apache.ibatis.cache.Cache;
-import org.apache.ibatis.cache.CacheException;
 
 /**
  * Simple blocking decorator
@@ -64,11 +64,20 @@ public class BlockingCache implements Cache {
     }
   }
 
+  /**
+   * 一般是先执行getObject(key),不存在则锁住其他线程去putObject(k,v)再释放线程，最终只有一个线程会putObject
+   *
+   * @param key The key
+   * @return
+   */
   @Override
   public Object getObject(Object key) {
+    // 获取重入锁
     acquireLock(key);
+    // 获取到锁继续执行
     Object value = delegate.getObject(key);
     if (value != null) {
+      // 缓存存在才释放锁
       releaseLock(key);
     }
     return value;
@@ -98,6 +107,7 @@ public class BlockingCache implements Cache {
   private void acquireLock(Object key) {
     Lock lock = getLockForKey(key);
     if (timeout > 0) {
+      // 有限时间的获取锁
       try {
         boolean acquired = lock.tryLock(timeout, TimeUnit.MILLISECONDS);
         if (!acquired) {
@@ -107,6 +117,7 @@ public class BlockingCache implements Cache {
         throw new CacheException("Got interrupted while trying to acquire lock for key " + key, e);
       }
     } else {
+      // 无限制时间的获取锁
       lock.lock();
     }
   }
@@ -114,6 +125,7 @@ public class BlockingCache implements Cache {
   private void releaseLock(Object key) {
     ReentrantLock lock = locks.get(key);
     if (lock.isHeldByCurrentThread()) {
+      // 是当前线程持有锁则释放
       lock.unlock();
     }
   }

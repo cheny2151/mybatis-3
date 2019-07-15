@@ -31,6 +31,7 @@ import org.apache.ibatis.cache.Cache;
  */
 public class WeakCache implements Cache {
   private final Deque<Object> hardLinksToAvoidGarbageCollection;
+  // 弱引用被gc时会添加到此队列（弱引用的构造函数里传入此队列）
   private final ReferenceQueue<Object> queueOfGarbageCollectedEntries;
   private final Cache delegate;
   private int numberOfHardLinks;
@@ -73,8 +74,10 @@ public class WeakCache implements Cache {
       if (result == null) {
         delegate.removeObject(key);
       } else {
+        // 缓存对应的弱引用存在并且未被gc，则重新将该对象放到强引用队列的头部
         hardLinksToAvoidGarbageCollection.addFirst(result);
         if (hardLinksToAvoidGarbageCollection.size() > numberOfHardLinks) {
+          // 若强引用队列大小超过限制，则移除最后一个对象的引用
           hardLinksToAvoidGarbageCollection.removeLast();
         }
       }
@@ -100,6 +103,9 @@ public class WeakCache implements Cache {
     return null;
   }
 
+  /**
+   * 移除已经别gc的弱引用，并且删除对应的缓存
+   */
   private void removeGarbageCollectedItems() {
     WeakEntry sv;
     while ((sv = (WeakEntry) queueOfGarbageCollectedEntries.poll()) != null) {
