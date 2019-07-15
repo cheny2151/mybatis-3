@@ -30,6 +30,7 @@ public class PoolState {
   // 活动连接
   protected final List<PooledConnection> activeConnections = new ArrayList<>();
   protected long requestCount = 0;
+  // 累计获取连接所用时间
   protected long accumulatedRequestTime = 0;
   // 累计checkout时间
   protected long accumulatedCheckoutTime = 0;
@@ -37,8 +38,11 @@ public class PoolState {
   protected long claimedOverdueConnectionCount = 0;
   // 累计过期连接的checkout时间
   protected long accumulatedCheckoutTimeOfOverdueConnections = 0;
+  // 累计获取连等待接时间
   protected long accumulatedWaitTime = 0;
+  // 获取连接等待次数
   protected long hadToWaitCount = 0;
+  // 失效连接个数统计
   protected long badConnectionCount = 0;
 
   public PoolState(PooledDataSource dataSource) {
@@ -49,10 +53,18 @@ public class PoolState {
     return requestCount;
   }
 
+  /**
+   * 计算平均获取连接时间
+   * @return
+   */
   public synchronized long getAverageRequestTime() {
     return requestCount == 0 ? 0 : accumulatedRequestTime / requestCount;
   }
 
+  /**
+   * 计算平均获取连接等待时间
+   * @return
+   */
   public synchronized long getAverageWaitTime() {
     return hadToWaitCount == 0 ? 0 : accumulatedWaitTime / hadToWaitCount;
 
