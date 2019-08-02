@@ -51,6 +51,9 @@ public abstract class BaseTypeHandler<T> extends TypeReference<T> implements Typ
     this.configuration = c;
   }
 
+  /**
+   * 实现setNull逻辑，具体其他类型由#setNonNullParameter方法提供
+   */
   @Override
   public void setParameter(PreparedStatement ps, int i, T parameter, JdbcType jdbcType) throws SQLException {
     if (parameter == null) {
@@ -75,6 +78,9 @@ public abstract class BaseTypeHandler<T> extends TypeReference<T> implements Typ
     }
   }
 
+  /**
+   * 将所有异常转换为ResultMapException运行时异常
+   */
   @Override
   public T getResult(ResultSet rs, String columnName) throws SQLException {
     try {
@@ -84,6 +90,9 @@ public abstract class BaseTypeHandler<T> extends TypeReference<T> implements Typ
     }
   }
 
+  /**
+   * 将所有异常转换为ResultMapException运行时异常
+   */
   @Override
   public T getResult(ResultSet rs, int columnIndex) throws SQLException {
     try {
@@ -93,6 +102,9 @@ public abstract class BaseTypeHandler<T> extends TypeReference<T> implements Typ
     }
   }
 
+  /**
+   * 将所有异常转换为ResultMapException运行时异常
+   */
   @Override
   public T getResult(CallableStatement cs, int columnIndex) throws SQLException {
     try {

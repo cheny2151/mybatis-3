@@ -40,6 +40,7 @@ public class TypeAliasRegistry {
   private final Map<String, Class<?>> typeAliases = new HashMap<>();
 
   public TypeAliasRegistry() {
+    // 默认的别名
     registerAlias("string", String.class);
 
     registerAlias("byte", Byte.class);
@@ -111,8 +112,10 @@ public class TypeAliasRegistry {
       String key = string.toLowerCase(Locale.ENGLISH);
       Class<T> value;
       if (typeAliases.containsKey(key)) {
+        // 通过typeAliases获取Class
         value = (Class<T>) typeAliases.get(key);
       } else {
+        // typeAliases不存在该别名，尝试通过全类名获取Class
         value = (Class<T>) Resources.classForName(string);
       }
       return value;
@@ -127,17 +130,25 @@ public class TypeAliasRegistry {
 
   public void registerAliases(String packageName, Class<?> superType) {
     ResolverUtil<Class<?>> resolverUtil = new ResolverUtil<>();
+    // 查找packageName包下所有superType的子类
     resolverUtil.find(new ResolverUtil.IsA(superType), packageName);
     Set<Class<? extends Class<?>>> typeSet = resolverUtil.getClasses();
     for (Class<?> type : typeSet) {
       // Ignore inner classes and interfaces (including package-info.java)
       // Skip also inner classes. See issue #6
+      // 忽略匿名类，接口，抽象类
       if (!type.isAnonymousClass() && !type.isInterface() && !type.isMemberClass()) {
         registerAlias(type);
       }
     }
   }
 
+  /**
+   * 注册Class别名
+   * 存在Alias则使用Alias的别名，不存在则使用Class#getSimpleName();
+   *
+   * @param type
+   */
   public void registerAlias(Class<?> type) {
     String alias = type.getSimpleName();
     Alias aliasAnnotation = type.getAnnotation(Alias.class);
@@ -154,11 +165,18 @@ public class TypeAliasRegistry {
     // issue #748
     String key = alias.toLowerCase(Locale.ENGLISH);
     if (typeAliases.containsKey(key) && typeAliases.get(key) != null && !typeAliases.get(key).equals(value)) {
+      // 出现key相同但value不同则报错
       throw new TypeException("The alias '" + alias + "' is already mapped to the value '" + typeAliases.get(key).getName() + "'.");
     }
     typeAliases.put(key, value);
   }
 
+  /**
+   * 通过全类名注册类别名
+   *
+   * @param alias 别名
+   * @param value 全类名
+   */
   public void registerAlias(String alias, String value) {
     try {
       registerAlias(alias, Resources.classForName(value));

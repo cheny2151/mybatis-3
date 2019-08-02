@@ -25,7 +25,14 @@ import java.sql.SQLException;
  */
 public class EnumOrdinalTypeHandler<E extends Enum<E>> extends BaseTypeHandler<E> {
 
+  /**
+   * 枚举的class
+   */
   private final Class<E> type;
+
+  /**
+   * 枚举的所有值
+   */
   private final E[] enums;
 
   public EnumOrdinalTypeHandler(Class<E> type) {
@@ -41,6 +48,7 @@ public class EnumOrdinalTypeHandler<E extends Enum<E>> extends BaseTypeHandler<E
 
   @Override
   public void setNonNullParameter(PreparedStatement ps, int i, E parameter, JdbcType jdbcType) throws SQLException {
+    // 数据库保存枚举的ordinal值
     ps.setInt(i, parameter.ordinal());
   }
 
@@ -71,6 +79,12 @@ public class EnumOrdinalTypeHandler<E extends Enum<E>> extends BaseTypeHandler<E
     return toOrdinalEnum(ordinal);
   }
 
+  /**
+   * 通过enum的ordinal定位枚举值
+   *
+   * @param ordinal 枚举的ordinal
+   * @return
+   */
   private E toOrdinalEnum(int ordinal) {
     try {
       return enums[ordinal];

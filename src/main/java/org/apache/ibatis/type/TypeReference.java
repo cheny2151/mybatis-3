@@ -20,7 +20,7 @@ import java.lang.reflect.Type;
 
 /**
  * References a generic type.
- *
+ *AA
  * @param <T> the referenced type
  * @since 3.1.0
  * @author Simone Tripodi
@@ -33,6 +33,9 @@ public abstract class TypeReference<T> {
     rawType = getSuperclassTypeParameter(getClass());
   }
 
+  /**
+   * 获取TypeReference泛型T被擦除后的实际类型(Class)
+   */
   Type getSuperclassTypeParameter(Class<?> clazz) {
     Type genericSuperclass = clazz.getGenericSuperclass();
     if (genericSuperclass instanceof Class) {
@@ -45,9 +48,11 @@ public abstract class TypeReference<T> {
         + "Remove the extension or add a type parameter to it.");
     }
 
+    // 获取实际泛型参数
     Type rawType = ((ParameterizedType) genericSuperclass).getActualTypeArguments()[0];
     // TODO remove this when Reflector is fixed to return Types
     if (rawType instanceof ParameterizedType) {
+      // 若实际泛型为ParameterizedType只返回rawType
       rawType = ((ParameterizedType) rawType).getRawType();
     }
 
