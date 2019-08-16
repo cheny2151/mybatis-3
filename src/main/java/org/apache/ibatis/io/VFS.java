@@ -35,10 +35,16 @@ import org.apache.ibatis.logging.LogFactory;
 public abstract class VFS {
   private static final Log log = LogFactory.getLog(VFS.class);
 
-  /** The built-in implementations. */
-  public static final Class<?>[] IMPLEMENTATIONS = { JBoss6VFS.class, DefaultVFS.class };
+  /**
+   * The built-in implementations.
+   * mybatis提供的两个实现类
+   */
+  public static final Class<?>[] IMPLEMENTATIONS = {JBoss6VFS.class, DefaultVFS.class};
 
-  /** The list to which implementations are added by {@link #addImplClass(Class)}. */
+  /**
+   * The list to which implementations are added by {@link #addImplClass(Class)}.
+   * 用户自定义的实现类Class，通过{@link #addImplClass(Class))方法添加
+   */
   public static final List<Class<? extends VFS>> USER_IMPLEMENTATIONS = new ArrayList<>();
 
   /** Singleton instance holder. */
@@ -54,6 +60,7 @@ public abstract class VFS {
 
       // Try each implementation class until a valid one is found
       VFS vfs = null;
+      // 获取有效的实现类,一般：使用DefaultVFS.class,存在org.jboss.vfs.VFS时才使用JBoss6VFS.class
       for (int i = 0; vfs == null || !vfs.isValid(); i++) {
         Class<? extends VFS> impl = impls.get(i);
         try {
@@ -196,6 +203,7 @@ public abstract class VFS {
    */
   public List<String> list(String path) throws IOException {
     List<String> names = new ArrayList<>();
+    // getResources获取到path的URL资源对象
     for (URL url : getResources(path)) {
       names.addAll(list(url, path));
     }

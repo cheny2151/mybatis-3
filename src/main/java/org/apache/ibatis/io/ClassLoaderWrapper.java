@@ -30,6 +30,7 @@ public class ClassLoaderWrapper {
 
   ClassLoaderWrapper() {
     try {
+      // 构造函数只初始化systemClassLoader,而defaultClassLoader默认为null
       systemClassLoader = ClassLoader.getSystemClassLoader();
     } catch (SecurityException ignored) {
       // AccessControlException on Google App Engine

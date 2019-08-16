@@ -15,14 +15,15 @@
  */
 package org.apache.ibatis.io;
 
-import java.io.IOException;
-import java.lang.annotation.Annotation;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
 import org.apache.ibatis.logging.Log;
 import org.apache.ibatis.logging.LogFactory;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.lang.annotation.Annotation;
+import java.net.URL;
+import java.util.*;
 
 /**
  * <p>ResolverUtil is used to locate classes that are available in the/a class path and meet
@@ -77,6 +78,7 @@ public class ResolverUtil<T> {
   /**
    * A Test that checks to see if each class is assignable to the provided class. Note
    * that this test will match the parent type itself if it is presented for matching.
+   * 用于匹配判断某类是否是parent的子类
    */
   public static class IsA implements Test {
     private Class<?> parent;
@@ -101,6 +103,7 @@ public class ResolverUtil<T> {
   /**
    * A Test that checks to see if each class is annotated with a specific annotation. If it
    * is, then the test returns true, otherwise false.
+   * 匹配判断类上是否存在注解annotation
    */
   public static class AnnotatedWith implements Test {
     private Class<? extends Annotation> annotation;
@@ -122,7 +125,10 @@ public class ResolverUtil<T> {
     }
   }
 
-  /** The set of matches being accumulated. */
+  /**
+   * The set of matches being accumulated.
+   * 符合此ResolverUtils实例化对象查找类条件的类
+   */
   private Set<Class<? extends T>> matches = new HashSet<>();
 
   /**
@@ -175,8 +181,10 @@ public class ResolverUtil<T> {
       return this;
     }
 
+    // 创建匹配类，条件：父类为parent
     Test test = new IsA(parent);
     for (String pkg : packageNames) {
+      // 从pkg中查找所有符合条件的类
       find(test, pkg);
     }
 
@@ -214,9 +222,11 @@ public class ResolverUtil<T> {
    *        classes, e.g. {@code net.sourceforge.stripes}
    */
   public ResolverUtil<T> find(Test test, String packageName) {
+    // 将.替换为/
     String path = getPackagePath(packageName);
 
     try {
+      // 获取path下所有文件名(包括目录) 例子:org/apache/ibatis/io/ResolverUtil.class
       List<String> children = VFS.getInstance().list(path);
       for (String child : children) {
         if (child.endsWith(".class")) {
@@ -228,6 +238,17 @@ public class ResolverUtil<T> {
     }
 
     return this;
+  }
+
+  /**
+   * url是一个目录时,调用openStream拿到的流读取每一行就是每一个子目录/文件
+   */
+  public static void main(String[] args) throws IOException, ClassNotFoundException {
+    ArrayList<URL> list = Collections.list(Thread.currentThread().getContextClassLoader().getResources("org/apache/ibatis/io"));
+    BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(list.get(0).openStream()));
+    String line;
+    while ((line = bufferedReader.readLine()) != null)
+      System.out.println(line);
   }
 
   /**
@@ -250,6 +271,7 @@ public class ResolverUtil<T> {
   @SuppressWarnings("unchecked")
   protected void addIfMatching(Test test, String fqn) {
     try {
+      // 除去.文件后缀再将/替换为.(最终结果例子：org.apache.ibatis.io.ResolverUtil)
       String externalName = fqn.substring(0, fqn.indexOf('.')).replace('/', '.');
       ClassLoader loader = getClassLoader();
       if (log.isDebugEnabled()) {
@@ -257,6 +279,7 @@ public class ResolverUtil<T> {
       }
 
       Class<?> type = loader.loadClass(externalName);
+      // 测试是否匹配条件
       if (test.matches(type)) {
         matches.add((Class<T>) type);
       }

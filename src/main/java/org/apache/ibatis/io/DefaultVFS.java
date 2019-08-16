@@ -15,18 +15,13 @@
  */
 package org.apache.ibatis.io;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.UnsupportedEncodingException;
+import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Enumeration;
 import java.util.List;
 import java.util.jar.JarEntry;
 import java.util.jar.JarInputStream;
@@ -42,9 +37,16 @@ import org.apache.ibatis.logging.LogFactory;
 public class DefaultVFS extends VFS {
   private static final Log log = LogFactory.getLog(DefaultVFS.class);
 
-  /** The magic header that indicates a JAR (ZIP) file. */
-  private static final byte[] JAR_MAGIC = { 'P', 'K', 3, 4 };
+  /**
+   * The magic header that indicates a JAR (ZIP) file.
+   * <p>
+   * jar文件的magic头
+   */
+  private static final byte[] JAR_MAGIC = { 'P', 'K', 3, 4};
 
+  /**
+   * DefaultVFS永远都是有效的
+   */
   @Override
   public boolean isValid() {
     return true;
@@ -60,6 +62,7 @@ public class DefaultVFS extends VFS {
       // file is found, then we'll list child resources by reading the JAR.
       URL jarUrl = findJarForResource(url);
       if (jarUrl != null) {
+        // 处理jar类型文件url
         is = jarUrl.openStream();
         if (log.isDebugEnabled()) {
           log.debug("Listing " + url);
@@ -94,6 +97,7 @@ public class DefaultVFS extends VFS {
              * the class loader as a child of the current resource. If any line fails
              * then we assume the current resource is not a directory.
              */
+            // url是一个目录时,调用openStream拿到的流读取每一行就是每一个子目录/文件
             is = url.openStream();
             BufferedReader reader = new BufferedReader(new InputStreamReader(is));
             List<String> lines = new ArrayList<>();
@@ -102,6 +106,7 @@ public class DefaultVFS extends VFS {
                 log.debug("Reader entry: " + line);
               }
               lines.add(line);
+              // 如果任何一行失败,我们就假设当前资源不是目录。
               if (getResources(path + "/" + line).isEmpty()) {
                 lines.clear();
                 break;
@@ -146,10 +151,14 @@ public class DefaultVFS extends VFS {
         }
 
         // Iterate over immediate children, adding files and recursing into directories
+        // 若children为空则为文件，若children不为空则为目录
         for (String child : children) {
+          // 拼接为完整的path
           String resourcePath = path + "/" + child;
+          // 将此目录/文件存入结果集中
           resources.add(resourcePath);
           URL childUrl = new URL(prefix + child);
+          // 递归，查找下一层级的目录/文件
           resources.addAll(list(childUrl, resourcePath));
         }
       }
@@ -186,6 +195,7 @@ public class DefaultVFS extends VFS {
 
     // Iterate over the entries and collect those that begin with the requested path
     List<String> resources = new ArrayList<>();
+    // 遍历jar包里所有类
     for (JarEntry entry; (entry = jar.getNextJarEntry()) != null;) {
       if (!entry.isDirectory()) {
         // Add leading slash if it's missing
@@ -195,6 +205,7 @@ public class DefaultVFS extends VFS {
         }
 
         // Check file name
+        // 通过path判断是否是要加载的类，不是则进行下一次for循环A
         if (name.indexOf(path) == 0) {
           if (log.isDebugEnabled()) {
             log.debug("Found resource: " + name);
@@ -207,11 +218,21 @@ public class DefaultVFS extends VFS {
     return resources;
   }
 
+  public static void main(String[] args) throws ClassNotFoundException, IOException {
+    Enumeration<URL> resources = Thread.currentThread().getContextClassLoader().getResources("net/sf/cglib/beans");
+    DefaultVFS defaultVFS = new DefaultVFS();
+    URL jarForResource = defaultVFS.findJarForResource(resources.nextElement());
+    JarInputStream jarInputStream = new JarInputStream(jarForResource.openStream());
+    List<String> strings = defaultVFS.listResources(jarInputStream, "net/sf/cglib/beans");
+  }
+
   /**
    * Attempts to deconstruct the given URL to find a JAR file containing the resource referenced
    * by the URL. That is, assuming the URL references a JAR entry, this method will return a URL
    * that references the JAR file containing the entry. If the JAR cannot be located, then this
    * method returns null.
+   *
+   * 如果入参url是jar包下的URL，则返回jar包的URL
    *
    * @param url The URL of the JAR entry.
    * @return The URL of the JAR file, if one is found. Null if not.
@@ -225,6 +246,7 @@ public class DefaultVFS extends VFS {
     // If the file part of the URL is itself a URL, then that URL probably points to the JAR
     try {
       for (;;) {
+        // url为jar包时，url.getFile()为file:xxxxxxxx,执行new URL(..)不会报MalformedURLException
         url = new URL(url.getFile());
         if (log.isDebugEnabled()) {
           log.debug("Inner URL: " + url);
@@ -238,6 +260,7 @@ public class DefaultVFS extends VFS {
     StringBuilder jarUrl = new StringBuilder(url.toExternalForm());
     int index = jarUrl.lastIndexOf(".jar");
     if (index >= 0) {
+      // 截取到.jar
       jarUrl.setLength(index + 4);
       if (log.isDebugEnabled()) {
         log.debug("Extracted JAR URL: " + jarUrl);
