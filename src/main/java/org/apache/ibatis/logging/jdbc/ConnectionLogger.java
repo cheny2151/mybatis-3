@@ -15,15 +15,21 @@
  */
 package org.apache.ibatis.logging.jdbc;
 
+import org.apache.ibatis.logging.Log;
+import org.apache.ibatis.reflection.ExceptionUtil;
+import sun.misc.ProxyGenerator;
+
+import java.io.ByteArrayOutputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.lang.reflect.Proxy;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.Statement;
-
-import org.apache.ibatis.logging.Log;
-import org.apache.ibatis.reflection.ExceptionUtil;
+import java.util.Collection;
 
 /**
  * Connection proxy to add logging.
@@ -41,9 +47,13 @@ public final class ConnectionLogger extends BaseJdbcLogger implements Invocation
     this.connection = conn;
   }
 
+  /**
+   * connection的jdk动态代理invoke方法
+   * 执行获取到PreparedStatement的方法，在获取PreparedStatement后生成一个PreparedStatement的动态代理
+   */
   @Override
   public Object invoke(Object proxy, Method method, Object[] params)
-      throws Throwable {
+          throws Throwable {
     try {
       if (Object.class.equals(method.getDeclaringClass())) {
         return method.invoke(this, params);
@@ -53,6 +63,7 @@ public final class ConnectionLogger extends BaseJdbcLogger implements Invocation
           debug(" Preparing: " + removeBreakingWhitespace((String) params[0]), true);
         }
         PreparedStatement stmt = (PreparedStatement) method.invoke(connection, params);
+        // 创建PreparedStatement的动态代理类再返回
         stmt = PreparedStatementLogger.newInstance(stmt, statementLog, queryStack);
         return stmt;
       } else if ("prepareCall".equals(method.getName())) {
@@ -60,10 +71,12 @@ public final class ConnectionLogger extends BaseJdbcLogger implements Invocation
           debug(" Preparing: " + removeBreakingWhitespace((String) params[0]), true);
         }
         PreparedStatement stmt = (PreparedStatement) method.invoke(connection, params);
+        // 创建PreparedStatement的动态代理类再返回
         stmt = PreparedStatementLogger.newInstance(stmt, statementLog, queryStack);
         return stmt;
       } else if ("createStatement".equals(method.getName())) {
         Statement stmt = (Statement) method.invoke(connection, params);
+        // 创建PreparedStatement的动态代理类再返回
         stmt = StatementLogger.newInstance(stmt, statementLog, queryStack);
         return stmt;
       } else {
@@ -72,6 +85,15 @@ public final class ConnectionLogger extends BaseJdbcLogger implements Invocation
     } catch (Throwable t) {
       throw ExceptionUtil.unwrapThrowable(t);
     }
+  }
+
+  public static void main(String[] args) throws IOException {
+    byte[] proxy0s = ProxyGenerator.generateProxyClass(
+            "proxy0", new Class[]{Collection.class}, Modifier.PUBLIC | Modifier.FINAL);
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    byteArrayOutputStream.write(proxy0s);
+    FileOutputStream fileOutputStream = new FileOutputStream("D:\\proxy0.class");
+    byteArrayOutputStream.writeTo(fileOutputStream);
   }
 
   /**
