@@ -29,6 +29,8 @@ import org.apache.ibatis.scripting.LanguageDriver;
 import org.apache.ibatis.session.Configuration;
 
 /**
+ * <insert><select><update><delete>节点实体对象
+ *
  * @author Clinton Begin
  */
 public final class MappedStatement {

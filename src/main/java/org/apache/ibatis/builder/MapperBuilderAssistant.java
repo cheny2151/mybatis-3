@@ -53,6 +53,7 @@ import org.apache.ibatis.type.TypeHandler;
  */
 public class MapperBuilderAssistant extends BaseBuilder {
 
+  // 当前namespace,即为Mapper.class的name
   private String currentNamespace;
   private final String resource;
   private Cache currentCache;
@@ -142,8 +143,10 @@ public class MapperBuilderAssistant extends BaseBuilder {
   }
 
   public ParameterMap addParameterMap(String id, Class<?> parameterClass, List<ParameterMapping> parameterMappings) {
+    // id = Mapper的Namespace+'.'+id
     id = applyCurrentNamespace(id, false);
     ParameterMap parameterMap = new ParameterMap.Builder(configuration, id, parameterClass, parameterMappings).build();
+    // 添加ParameterMap到Configuration
     configuration.addParameterMap(parameterMap);
     return parameterMap;
   }
@@ -172,6 +175,17 @@ public class MapperBuilderAssistant extends BaseBuilder {
         .build();
   }
 
+  /**
+   * 创建resultMap节点最终实例化对象并存放到Configuration中
+   * 
+   * @param id
+   * @param type
+   * @param extend
+   * @param discriminator
+   * @param resultMappings
+   * @param autoMapping
+   * @return
+   */
   public ResultMap addResultMap(
       String id,
       Class<?> type,
@@ -179,7 +193,9 @@ public class MapperBuilderAssistant extends BaseBuilder {
       Discriminator discriminator,
       List<ResultMapping> resultMappings,
       Boolean autoMapping) {
+    // 最终结果：namespace+id(<resultMap>)
     id = applyCurrentNamespace(id, false);
+    // extend：继承的resultMap
     extend = applyCurrentNamespace(extend, true);
 
     if (extend != null) {
@@ -187,10 +203,13 @@ public class MapperBuilderAssistant extends BaseBuilder {
         throw new IncompleteElementException("Could not find a parent resultmap with id '" + extend + "'");
       }
       ResultMap resultMap = configuration.getResultMap(extend);
+      // 将继承的resultMap的所有子节点实体ResultMapping添加到新集合List中
       List<ResultMapping> extendedResultMappings = new ArrayList<>(resultMap.getResultMappings());
+      // 移除复写的节点实体ResultMapping
       extendedResultMappings.removeAll(resultMappings);
       // Remove parent constructor if this resultMap declares a constructor.
       boolean declaresConstructor = false;
+      // 移除constructor节点的ResultMapping实体
       for (ResultMapping resultMapping : resultMappings) {
         if (resultMapping.getFlags().contains(ResultFlag.CONSTRUCTOR)) {
           declaresConstructor = true;
@@ -200,8 +219,10 @@ public class MapperBuilderAssistant extends BaseBuilder {
       if (declaresConstructor) {
         extendedResultMappings.removeIf(resultMapping -> resultMapping.getFlags().contains(ResultFlag.CONSTRUCTOR));
       }
+      // 将继承的resultMap的所有子节点实体ResultMapping添加到此resultMap
       resultMappings.addAll(extendedResultMappings);
     }
+    // 生成最终的解析结果对象实体ResultMap
     ResultMap resultMap = new ResultMap.Builder(configuration, id, type, resultMappings, autoMapping)
         .discriminator(discriminator)
         .build();

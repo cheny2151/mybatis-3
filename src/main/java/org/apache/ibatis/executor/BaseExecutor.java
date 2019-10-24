@@ -335,6 +335,7 @@ public abstract class BaseExecutor implements Executor {
   protected Connection getConnection(Log statementLog) throws SQLException {
     Connection connection = transaction.getConnection();
     if (statementLog.isDebugEnabled()) {
+      // 返回日志JDK动态代理类
       return ConnectionLogger.newInstance(connection, statementLog, queryStack);
     } else {
       return connection;

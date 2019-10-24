@@ -34,7 +34,11 @@ public class ErrorContext {
   private ErrorContext() {
   }
 
+  /**
+   * 一个线程持有相同的ErrorContext
+   */
   public static ErrorContext instance() {
+    // 从线程变量中获取ErrorContext,获取不到则new并且设置到线程变量中
     ErrorContext context = LOCAL.get();
     if (context == null) {
       context = new ErrorContext();

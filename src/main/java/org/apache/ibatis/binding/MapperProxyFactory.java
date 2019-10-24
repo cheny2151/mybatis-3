@@ -23,11 +23,15 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.apache.ibatis.session.SqlSession;
 
 /**
+ * 创建Mapper接口代理实现类的Factory
+ *
  * @author Lasse Voss
  */
 public class MapperProxyFactory<T> {
 
+  // mapper接口
   private final Class<T> mapperInterface;
+  // 方法缓存，由Factory维护，创建新的MapperProxy实例时作为参数传递。（所有的MapperProxy实例共用一个缓存）
   private final Map<Method, MapperMethod> methodCache = new ConcurrentHashMap<>();
 
   public MapperProxyFactory(Class<T> mapperInterface) {

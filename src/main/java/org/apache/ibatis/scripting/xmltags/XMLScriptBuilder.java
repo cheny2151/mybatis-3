@@ -50,7 +50,9 @@ public class XMLScriptBuilder extends BaseBuilder {
     initNodeHandlerMap();
   }
 
-
+  /**
+   * 初始化所有的NodeHandler
+   */
   private void initNodeHandlerMap() {
     nodeHandlerMap.put("trim", new TrimHandler());
     nodeHandlerMap.put("where", new WhereHandler());
@@ -74,12 +76,29 @@ public class XMLScriptBuilder extends BaseBuilder {
     return sqlSource;
   }
 
+  /**
+   * 用于解析节点的所有child
+   * 将节点的每个child实例化SqlNode，并将所有SqlNode的集合存放到MixedSqlNode对象
+   * 注意：
+   * <select>
+   *     xxx
+   *    <if test=''>
+   *      yyy
+   *     </if>
+   * </select>
+   * <select>的子节点为<if>，type为ELEMENT_NODE和yyy,type为TEXT_NODE
+   * <if>的子节点为xxx,type为TEXT_NODE
+   *
+   * @param node 节点
+   * @return 实例化为MixedSqlNode
+   */
   protected MixedSqlNode parseDynamicTags(XNode node) {
     List<SqlNode> contents = new ArrayList<>();
     NodeList children = node.getNode().getChildNodes();
     for (int i = 0; i < children.getLength(); i++) {
       XNode child = node.newXNode(children.item(i));
       if (child.getNode().getNodeType() == Node.CDATA_SECTION_NODE || child.getNode().getNodeType() == Node.TEXT_NODE) {
+        // 节点为纯文本
         String data = child.getStringBody("");
         TextSqlNode textSqlNode = new TextSqlNode(data);
         if (textSqlNode.isDynamic()) {
@@ -89,7 +108,9 @@ public class XMLScriptBuilder extends BaseBuilder {
           contents.add(new StaticTextSqlNode(data));
         }
       } else if (child.getNode().getNodeType() == Node.ELEMENT_NODE) { // issue #628
+        // 节点为element（包含不为纯文本的子节点）,例如<if>、<foreach>...
         String nodeName = child.getNode().getNodeName();
+        // 每个<if>、<foreach>之类的节点对应一个NodeHandler
         NodeHandler handler = nodeHandlerMap.get(nodeName);
         if (handler == null) {
           throw new BuilderException("Unknown element <" + nodeName + "> in SQL statement.");
@@ -98,6 +119,7 @@ public class XMLScriptBuilder extends BaseBuilder {
         isDynamic = true;
       }
     }
+    // 返回所有child实例化SqlNode集合
     return new MixedSqlNode(contents);
   }
 

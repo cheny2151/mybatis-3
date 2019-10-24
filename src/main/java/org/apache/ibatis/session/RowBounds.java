@@ -16,6 +16,8 @@
 package org.apache.ibatis.session;
 
 /**
+ * mybatis自带的limit
+ *
  * @author Clinton Begin
  */
 public class RowBounds {
