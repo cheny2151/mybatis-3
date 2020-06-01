@@ -51,32 +51,44 @@ public class XMLIncludeTransformer {
   }
 
   /**
+   * 找到<include/>对应的<sql/>进行替换。
+   * 找到<include/>节点后，会复制该节点，然后以第三个入参included为true再次调用此方法，
+   * 递归<sql/>的子节点（<sql/>也可能嵌套<include/>）并替换#{}变量。
+   *
    * Recursively apply includes through all SQL fragments.
    * @param source Include node in DOM tree
    * @param variablesContext Current context for static variables with values
    */
   private void applyIncludes(Node source, final Properties variablesContext, boolean included) {
     if (source.getNodeName().equals("include")) {
+      // ⭐ 发现<include/>节点，执行替换的逻辑
+      // 查找<include/>对应的<sql/>节点，toInclude为<sql/>节点
       Node toInclude = findSqlFragment(getStringAttribute(source, "refid"), variablesContext);
       Properties toIncludeContext = getVariablesContext(source, variablesContext);
+      // 由于<sql/>也可能嵌套<include/>，所以继续递归
       applyIncludes(toInclude, toIncludeContext, true);
       if (toInclude.getOwnerDocument() != source.getOwnerDocument()) {
         toInclude = source.getOwnerDocument().importNode(toInclude, true);
       }
+      // toInclude(<sql/>)替换source(<include/>)
       source.getParentNode().replaceChild(toInclude, source);
+      // 将toInclude(<sql/>)的所有子节点插入到toInclude(<sql/>)之前
       while (toInclude.hasChildNodes()) {
         toInclude.getParentNode().insertBefore(toInclude.getFirstChild(), toInclude);
       }
+      // 移除toInclude(<sql/>节点)
       toInclude.getParentNode().removeChild(toInclude);
     } else if (source.getNodeType() == Node.ELEMENT_NODE) {
       if (included && !variablesContext.isEmpty()) {
         // replace variables in attribute values
+        // 尝试用variablesContext替换${}变量
         NamedNodeMap attributes = source.getAttributes();
         for (int i = 0; i < attributes.getLength(); i++) {
           Node attr = attributes.item(i);
           attr.setNodeValue(PropertyParser.parse(attr.getNodeValue(), variablesContext));
         }
       }
+      // 节点类型为ELEMENT_NODE时，递归子节点
       NodeList children = source.getChildNodes();
       for (int i = 0; i < children.getLength(); i++) {
         applyIncludes(children.item(i), variablesContext, included);
@@ -89,9 +101,12 @@ public class XMLIncludeTransformer {
   }
 
   private Node findSqlFragment(String refid, Properties variables) {
+    // 若存在${}则替换
     refid = PropertyParser.parse(refid, variables);
+    // 拼接当前namespace
     refid = builderAssistant.applyCurrentNamespace(refid, true);
     try {
+      // 通过id获取<include/>指向的<sql/>,克隆并返回
       XNode nodeToInclude = configuration.getSqlFragments().get(refid);
       return nodeToInclude.getNode().cloneNode(true);
     } catch (IllegalArgumentException e) {

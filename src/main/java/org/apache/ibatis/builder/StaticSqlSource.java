@@ -23,12 +23,14 @@ import org.apache.ibatis.mapping.SqlSource;
 import org.apache.ibatis.session.Configuration;
 
 /**
- * 静态sql
+ * 存放已经解析完毕的静态sql，单纯的为了创建BoundSql
  * @author Clinton Begin
  */
 public class StaticSqlSource implements SqlSource {
 
+  // 静态sql（#{}已经解析完毕，并用?替换）
   private final String sql;
+  // 一个#{}对应一个ParameterMapping，依序
   private final List<ParameterMapping> parameterMappings;
   private final Configuration configuration;
 

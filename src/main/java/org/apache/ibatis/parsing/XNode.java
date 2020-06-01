@@ -15,16 +15,13 @@
  */
 package org.apache.ibatis.parsing;
 
+import org.w3c.dom.CharacterData;
+import org.w3c.dom.*;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-
-import org.w3c.dom.CharacterData;
-import org.w3c.dom.Element;
-import org.w3c.dom.NamedNodeMap;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
 
 /**
  * @author Clinton Begin
@@ -73,6 +70,11 @@ public class XNode {
     return builder.toString();
   }
 
+  /**
+   * 获取节点身份签名
+   * 往父节点遍历拼接出签名
+   * 例如：association[property]_result[value]
+   */
   public String getValueBasedIdentifier() {
     StringBuilder builder = new StringBuilder();
     XNode current = this;
@@ -80,6 +82,7 @@ public class XNode {
       if (current != this) {
         builder.insert(0, "_");
       }
+      // 拼接（id -> value -> property）
       String value = current.getStringAttribute("id",
           current.getStringAttribute("value",
               current.getStringAttribute("property", null)));
@@ -287,13 +290,20 @@ public class XNode {
     }
   }
 
+  /**
+   * 获取本XNode节点的所有子节点
+   *
+   * @return XNode的集合
+   */
   public List<XNode> getChildren() {
     List<XNode> children = new ArrayList<>();
     NodeList nodeList = node.getChildNodes();
     if (nodeList != null) {
+      // 遍历NodeList
       for (int i = 0, n = nodeList.getLength(); i < n; i++) {
         Node node = nodeList.item(i);
         if (node.getNodeType() == Node.ELEMENT_NODE) {
+          // 只获取Node.ELEMENT_NODE类型
           children.add(new XNode(xpathParser, node, variables));
         }
       }
@@ -301,6 +311,9 @@ public class XNode {
     return children;
   }
 
+  /**
+   * 将XNode节点的所有子节点的name,value转化为一个Properties对象
+   */
   public Properties getChildrenAsProperties() {
     Properties properties = new Properties();
     for (XNode child : getChildren()) {

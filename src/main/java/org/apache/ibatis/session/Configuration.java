@@ -236,6 +236,7 @@ public class Configuration {
   public void setVfsImpl(Class<? extends VFS> vfsImpl) {
     if (vfsImpl != null) {
       this.vfsImpl = vfsImpl;
+      // 添加到 VFS 中的自定义 VFS 类的集合
       VFS.addImplClass(this.vfsImpl);
     }
   }
@@ -610,6 +611,7 @@ public class Configuration {
   }
 
   public void addCache(Cache cache) {
+    // cache的id为Mapper的namespace
     caches.put(cache.getId(), cache);
   }
 
@@ -630,8 +632,11 @@ public class Configuration {
   }
 
   public void addResultMap(ResultMap rm) {
+    // ResultMap的id作为key进行缓存
     resultMaps.put(rm.getId(), rm);
+    // todo 遍历全局的 ResultMap 集合，若其拥有 Discriminator 对象，则判断是否强制标记为有内嵌的 ResultMap
     checkLocallyForDiscriminatedNestedResultMaps(rm);
+    // todo 若传入的 ResultMap 不存在内嵌 ResultMap 并且有 Discriminator ，则判断是否需要强制表位有内嵌的 ResultMap
     checkGloballyForDiscriminatedNestedResultMaps(rm);
   }
 
@@ -733,6 +738,7 @@ public class Configuration {
   }
 
   public void addInterceptor(Interceptor interceptor) {
+    // 加入拦截器责任链中
     interceptorChain.addInterceptor(interceptor);
   }
 

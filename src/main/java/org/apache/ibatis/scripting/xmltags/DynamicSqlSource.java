@@ -26,6 +26,10 @@ import org.apache.ibatis.session.Configuration;
 public class DynamicSqlSource implements SqlSource {
 
   private final Configuration configuration;
+  /**
+   * sql根节点：
+   * xml配置时为XMLScriptBuilder#parseDynamicTags()解析结果:MixedSqlNode
+   */
   private final SqlNode rootSqlNode;
 
   public DynamicSqlSource(Configuration configuration, SqlNode rootSqlNode) {
@@ -35,13 +39,19 @@ public class DynamicSqlSource implements SqlSource {
 
   @Override
   public BoundSql getBoundSql(Object parameterObject) {
+    // 创建DynamicContext，用于存放sql拼接
     DynamicContext context = new DynamicContext(configuration, parameterObject);
+    /* 从根节点开始调用#apply()，最终将根据绑定值解析动态sql节点拼接成静态sql存放于context#sqlBuilder成员变量，
+       既执行完#apply()后，<if/>等动态节点与#{}都填充解析完毕，除了sql就只剩#{} */
     rootSqlNode.apply(context);
     SqlSourceBuilder sqlSourceParser = new SqlSourceBuilder(configuration);
     Class<?> parameterType = parameterObject == null ? Object.class : parameterObject.getClass();
+    // 解析#{}返回StaticSqlSource
     SqlSource sqlSource = sqlSourceParser.parse(context.getSql(), parameterType, context.getBindings());
     BoundSql boundSql = sqlSource.getBoundSql(parameterObject);
+    // 将DynamicContext#bindings属性中属于Map部分的参数设置到BoundSql#additionalParameters中
     context.getBindings().forEach(boundSql::setAdditionalParameter);
+    // 返回的boundSql已经具备了sql需要执行的所有碎片（静态sql，参数绑定值）
     return boundSql;
   }
 

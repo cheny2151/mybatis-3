@@ -18,6 +18,9 @@ package org.apache.ibatis.mapping;
 import java.sql.ResultSet;
 
 /**
+ * FORWARD_ONLY只能使用next()逐步取得数据，
+ * 指定SCROLL_INSENSITIVE或SCROLL_SENSITIVE，则可以使用ResultSet的afterLast()、previous()、absolute()、relative()等方法
+ *
  * @author Clinton Begin
  */
 public enum ResultSetType {
@@ -27,8 +30,14 @@ public enum ResultSetType {
    * @since 3.5.0
    */
   DEFAULT(-1),
+
+  /* 结果集的游标只能向下滚动。 */
   FORWARD_ONLY(ResultSet.TYPE_FORWARD_ONLY),
+
+  /* 结果集的游标可以上下移动，当数据库变化时，当前结果集不变。*/
   SCROLL_INSENSITIVE(ResultSet.TYPE_SCROLL_INSENSITIVE),
+
+  /* 返回可滚动的结果集，当数据库变化时，当前结果集同步改变。（与fetchSize有关）*/
   SCROLL_SENSITIVE(ResultSet.TYPE_SCROLL_SENSITIVE);
 
   private final int value;

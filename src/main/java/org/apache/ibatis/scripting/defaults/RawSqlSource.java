@@ -49,6 +49,7 @@ public class RawSqlSource implements SqlSource {
 
   private static String getSql(Configuration configuration, SqlNode rootSqlNode) {
     DynamicContext context = new DynamicContext(configuration, null);
+    // rootSqlNode为XMLScriptBuilder#parseDynamicTags()方法返回值MixedSqlNode，并且不存在动态变量
     rootSqlNode.apply(context);
     return context.getSql();
   }

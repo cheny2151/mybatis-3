@@ -49,6 +49,7 @@ public class DynamicContext {
     } else {
       bindings = new ContextMap(null);
     }
+    // 内置绑定变量
     bindings.put(PARAMETER_OBJECT_KEY, parameterObject);
     bindings.put(DATABASE_ID_KEY, configuration.getDatabaseId());
   }
@@ -85,10 +86,12 @@ public class DynamicContext {
     @Override
     public Object get(Object key) {
       String strKey = (String) key;
+      // 优先从Map中取出变量
       if (super.containsKey(strKey)) {
         return super.get(strKey);
       }
 
+      // 从用户传入的变量parameterMetaObject中取出变量
       if (parameterMetaObject != null) {
         // issue #61 do not modify the context when reading
         return parameterMetaObject.getValue(strKey);

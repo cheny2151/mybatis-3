@@ -22,6 +22,7 @@ public class GenericTokenParser {
 
   private final String openToken;
   private final String closeToken;
+  // 解析到token时抽象的处理接口
   private final TokenHandler handler;
 
   public GenericTokenParser(String openToken, String closeToken, TokenHandler handler) {

@@ -29,13 +29,16 @@ import org.apache.ibatis.builder.BuilderException;
 public class ExpressionEvaluator {
 
   public boolean evaluateBoolean(String expression, Object parameterObject) {
+    // 执行ognl表达式
     Object value = OgnlCache.getValue(expression, parameterObject);
     if (value instanceof Boolean) {
       return (Boolean) value;
     }
     if (value instanceof Number) {
+      // 若为数值，则!=0时为true
       return new BigDecimal(String.valueOf(value)).compareTo(BigDecimal.ZERO) != 0;
     }
+    // 其他类型不为null时为true
     return value != null;
   }
 

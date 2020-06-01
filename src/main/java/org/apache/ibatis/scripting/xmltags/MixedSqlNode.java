@@ -18,9 +18,12 @@ package org.apache.ibatis.scripting.xmltags;
 import java.util.List;
 
 /**
+ * 混合SqlNode实体
+ *
  * @author Clinton Begin
  */
 public class MixedSqlNode implements SqlNode {
+  // 按顺序存放各种类型的SqlNode
   private final List<SqlNode> contents;
 
   public MixedSqlNode(List<SqlNode> contents) {
@@ -29,6 +32,7 @@ public class MixedSqlNode implements SqlNode {
 
   @Override
   public boolean apply(DynamicContext context) {
+    // 按顺序拼接sql
     contents.forEach(node -> node.apply(context));
     return true;
   }

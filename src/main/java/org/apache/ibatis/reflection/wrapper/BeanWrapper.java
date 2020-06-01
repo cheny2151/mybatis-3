@@ -145,11 +145,14 @@ public class BeanWrapper extends BaseWrapper {
   public boolean hasGetter(String name) {
     PropertyTokenizer prop = new PropertyTokenizer(name);
     if (prop.hasNext()) {
+      // 先通过MetaClass判断是否有首部属性
       if (metaClass.hasGetter(prop.getIndexedName())) {
         MetaObject metaValue = metaObject.metaObjectForProperty(prop.getIndexedName());
+        // 首部属性值为null则通过MetaClass判断
         if (metaValue == SystemMetaObject.NULL_META_OBJECT) {
           return metaClass.hasGetter(name);
         } else {
+          // 不为null则通过MetaObject判断
           return metaValue.hasGetter(prop.getChildren());
         }
       } else {

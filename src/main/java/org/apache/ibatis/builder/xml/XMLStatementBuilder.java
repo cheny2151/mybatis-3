@@ -34,11 +34,15 @@ import org.apache.ibatis.scripting.LanguageDriver;
 import org.apache.ibatis.session.Configuration;
 
 /**
+ * 一个select、insert、update、delete节点对应一个XMLStatementBuilder实例
+ *
  * @author Clinton Begin
  */
 public class XMLStatementBuilder extends BaseBuilder {
 
+  // select、insert、update、delete节点所属Mapper的MapperBuilderAssistant实例
   private final MapperBuilderAssistant builderAssistant;
+  // select、insert、update、delete节点
   private final XNode context;
   private final String requiredDatabaseId;
 
@@ -54,16 +58,23 @@ public class XMLStatementBuilder extends BaseBuilder {
   }
 
   /**
-   * 解析select|insert|update|delete节点
+   * 解析select、insert、update、delete节点,主要逻辑:
+   *  校验databaseId -> 判断sql类型SqlCommandType并获取部分基础属性 ->
+   *  找到<include/>对应的<sql/>节点并替换其内容 ->
+   *  获取LanguageDriver实现类 -> 处理<selectKey/>节点,主键生成相关 ->
+   *  通过landDriver解析子节点（默认实现为XMLLanguageDriver，子节点实体为SqlSource）->
+   *  获取节点的各个属性 -> 创建MappedStatement并存放于configuration
    */
   public void parseStatementNode() {
     String id = context.getStringAttribute("id");
     String databaseId = context.getStringAttribute("databaseId");
 
+    // 校验节点databaseId属性于当前configuration全局是否相等
     if (!databaseIdMatchesCurrent(id, databaseId, this.requiredDatabaseId)) {
       return;
     }
 
+    // 通过节点名称区分sql类型，映射为枚举SqlCommandType
     String nodeName = context.getNode().getNodeName();
     SqlCommandType sqlCommandType = SqlCommandType.valueOf(nodeName.toUpperCase(Locale.ENGLISH));
     boolean isSelect = sqlCommandType == SqlCommandType.SELECT;
@@ -72,13 +83,14 @@ public class XMLStatementBuilder extends BaseBuilder {
     boolean resultOrdered = context.getBooleanAttribute("resultOrdered", false);
 
     // Include Fragments before parsing
+    // 通过XMLIncludeTransformer找到<include/>对应的<sql/>节点并替换其内容
     XMLIncludeTransformer includeParser = new XMLIncludeTransformer(configuration, builderAssistant);
     includeParser.applyIncludes(context.getNode());
 
     String parameterType = context.getStringAttribute("parameterType");
     Class<?> parameterTypeClass = resolveClass(parameterType);
 
-    // mybatis3.2之后添加的可插拔脚本语言
+    // mybatis3.2之后添加的可插拔脚本语言，用于解析<select/>等sql节点的子节点（默认为xml实现类：XMLLanguageDriver）
     String lang = context.getStringAttribute("lang");
     LanguageDriver langDriver = getLanguageDriver(lang);
 
@@ -86,6 +98,7 @@ public class XMLStatementBuilder extends BaseBuilder {
     processSelectKeyNodes(id, parameterTypeClass, langDriver);
 
     // Parse the SQL (pre: <selectKey> and <include> were parsed and removed)
+    // 获取KeyGenerator实现类
     KeyGenerator keyGenerator;
     String keyStatementId = id + SelectKeyGenerator.SELECT_KEY_SUFFIX;
     keyStatementId = builderAssistant.applyCurrentNamespace(keyStatementId, true);
@@ -93,14 +106,15 @@ public class XMLStatementBuilder extends BaseBuilder {
       // selectKey
       keyGenerator = configuration.getKeyGenerator(keyStatementId);
     } else {
-      // useGeneratedKeys
+      // useGeneratedKeys为true时KeyGenerator实现类才有意义，为Jdbc3KeyGenerator。
       keyGenerator = context.getBooleanAttribute("useGeneratedKeys",
           configuration.isUseGeneratedKeys() && SqlCommandType.INSERT.equals(sqlCommandType))
           ? Jdbc3KeyGenerator.INSTANCE : NoKeyGenerator.INSTANCE;
     }
 
-    // 开始解析子节点
+    // 开始解析子节点（默认landDriver实现为XMLLanguageDriver），此处只会返回DynamicSqlSource(动态)和RawSqlSource(静态)的SqlSource实现类
     SqlSource sqlSource = langDriver.createSqlSource(configuration, context, parameterTypeClass);
+    // 获取select、insert、update、delete节点的各个属性
     StatementType statementType = StatementType.valueOf(context.getStringAttribute("statementType", StatementType.PREPARED.toString()));
     Integer fetchSize = context.getIntAttribute("fetchSize");
     Integer timeout = context.getIntAttribute("timeout");
@@ -114,12 +128,21 @@ public class XMLStatementBuilder extends BaseBuilder {
     String keyColumn = context.getStringAttribute("keyColumn");
     String resultSets = context.getStringAttribute("resultSets");
 
+    // 创建sql节点实体对象并添加到configuration,最终解析的实体为org.apache.ibatis.mapping.MappedStatement
     builderAssistant.addMappedStatement(id, sqlSource, statementType, sqlCommandType,
         fetchSize, timeout, parameterMap, parameterTypeClass, resultMap, resultTypeClass,
         resultSetTypeEnum, flushCache, useCache, resultOrdered,
         keyGenerator, keyProperty, keyColumn, databaseId, langDriver, resultSets);
   }
 
+  /**
+   * 处理<selectKey/>节点
+   * 此节点用于生成主键
+   *
+   * @param id
+   * @param parameterTypeClass
+   * @param langDriver
+   */
   private void processSelectKeyNodes(String id, Class<?> parameterTypeClass, LanguageDriver langDriver) {
     List<XNode> selectKeyNodes = context.evalNodes("selectKey");
     if (configuration.getDatabaseId() != null) {
@@ -139,6 +162,15 @@ public class XMLStatementBuilder extends BaseBuilder {
     }
   }
 
+  /**
+   * 解析<selectKey/>节点
+   *
+   * @param id
+   * @param nodeToHandle <selectKey/>节点实体
+   * @param parameterTypeClass
+   * @param langDriver
+   * @param databaseId
+   */
   private void parseSelectKeyNode(String id, XNode nodeToHandle, Class<?> parameterTypeClass, LanguageDriver langDriver, String databaseId) {
     String resultType = nodeToHandle.getStringAttribute("resultType");
     Class<?> resultTypeClass = resolveClass(resultType);
@@ -150,6 +182,7 @@ public class XMLStatementBuilder extends BaseBuilder {
     //defaults
     boolean useCache = false;
     boolean resultOrdered = false;
+    // 默认为NoKeyGenerator
     KeyGenerator keyGenerator = NoKeyGenerator.INSTANCE;
     Integer fetchSize = null;
     Integer timeout = null;
@@ -190,6 +223,7 @@ public class XMLStatementBuilder extends BaseBuilder {
       // skip this statement if there is a previous one with a not null databaseId
       id = builderAssistant.applyCurrentNamespace(id, false);
       if (this.configuration.hasStatement(id, false)) {
+        // 如果已经存在此id的MappedStatement，则该databaseId不可为空
         MappedStatement previous = this.configuration.getMappedStatement(id, false); // issue #2
         if (previous.getDatabaseId() != null) {
           return false;

@@ -40,7 +40,7 @@ public class TextSqlNode implements SqlNode {
 
   public boolean isDynamic() {
     DynamicCheckerTokenParser checker = new DynamicCheckerTokenParser();
-    // DynamicCheckerTokenParser是一个钩子(callback)，解析到动态语句${}则将执行#handleToken()
+    // DynamicCheckerTokenParser是一个钩子(callback)，解析到动态语句${}则将执行#handleToken(),将isDynamic设为为true
     GenericTokenParser parser = createParser(checker);
     parser.parse(text);
     return checker.isDynamic();
@@ -48,6 +48,7 @@ public class TextSqlNode implements SqlNode {
 
   @Override
   public boolean apply(DynamicContext context) {
+    // BindingTokenParser是一个钩子(callback)，解析到动态语句${}则将执行#handleToken(),将替换为对应的绑定值
     GenericTokenParser parser = createParser(new BindingTokenParser(context, injectionFilter));
     context.appendSql(parser.parse(text));
     return true;
@@ -69,6 +70,7 @@ public class TextSqlNode implements SqlNode {
 
     @Override
     public String handleToken(String content) {
+      // content为${}的内容，从绑定值中找对应的值进行替换
       Object parameter = context.getBindings().get("_parameter");
       if (parameter == null) {
         context.getBindings().put("value", null);

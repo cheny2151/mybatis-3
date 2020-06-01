@@ -29,10 +29,15 @@ import org.apache.ibatis.session.Configuration;
  */
 public class TrimSqlNode implements SqlNode {
 
+  // <trim>子节点实体
   private final SqlNode contents;
+  // 头部需要补充的字符串
   private final String prefix;
+  // 尾部需要补充的字符串
   private final String suffix;
+  // 头部需要删除的字符串
   private final List<String> prefixesToOverride;
+  // 尾部需要删除的字符串
   private final List<String> suffixesToOverride;
   private final Configuration configuration;
 
@@ -52,7 +57,9 @@ public class TrimSqlNode implements SqlNode {
   @Override
   public boolean apply(DynamicContext context) {
     FilteredDynamicContext filteredDynamicContext = new FilteredDynamicContext(context);
+    // 经过FilteredDynamicContext#appendSql()装饰加强后，contents的所有sql将拼接到FilteredDynamicContext类上的sqlBuffer成员变量
     boolean result = contents.apply(filteredDynamicContext);
+    // 将sqlBuffer应用到delegate#appendSql
     filteredDynamicContext.applyAll();
     return result;
   }
@@ -69,9 +76,14 @@ public class TrimSqlNode implements SqlNode {
     return Collections.emptyList();
   }
 
+  /**
+   * 装饰者--加强DynamicContext
+   */
   private class FilteredDynamicContext extends DynamicContext {
     private DynamicContext delegate;
+    // 是否已经补充了prefix
     private boolean prefixApplied;
+    // 是否已经补充了suffix
     private boolean suffixApplied;
     private StringBuilder sqlBuffer;
 
@@ -87,9 +99,12 @@ public class TrimSqlNode implements SqlNode {
       sqlBuffer = new StringBuilder(sqlBuffer.toString().trim());
       String trimmedUppercaseSql = sqlBuffer.toString().toUpperCase(Locale.ENGLISH);
       if (trimmedUppercaseSql.length() > 0) {
+        // 处理头部
         applyPrefix(sqlBuffer, trimmedUppercaseSql);
+        // 处理尾部
         applySuffix(sqlBuffer, trimmedUppercaseSql);
       }
+      // 执行被装饰类的appendSql方法
       delegate.appendSql(sqlBuffer.toString());
     }
 
@@ -110,6 +125,7 @@ public class TrimSqlNode implements SqlNode {
 
     @Override
     public void appendSql(String sql) {
+      // 覆盖DynamicContext方法，将sql拼接到自身的成员变量
       sqlBuffer.append(sql);
     }
 
@@ -120,8 +136,10 @@ public class TrimSqlNode implements SqlNode {
 
     private void applyPrefix(StringBuilder sql, String trimmedUppercaseSql) {
       if (!prefixApplied) {
+        // 头部还未处理
         prefixApplied = true;
         if (prefixesToOverride != null) {
+          // 删除prefixesToOverride元素
           for (String toRemove : prefixesToOverride) {
             if (trimmedUppercaseSql.startsWith(toRemove)) {
               sql.delete(0, toRemove.trim().length());
@@ -130,6 +148,7 @@ public class TrimSqlNode implements SqlNode {
           }
         }
         if (prefix != null) {
+          // 插入新头部
           sql.insert(0, " ");
           sql.insert(0, prefix);
         }
@@ -138,8 +157,10 @@ public class TrimSqlNode implements SqlNode {
 
     private void applySuffix(StringBuilder sql, String trimmedUppercaseSql) {
       if (!suffixApplied) {
+        // 尾部还未处理
         suffixApplied = true;
         if (suffixesToOverride != null) {
+          // 删除尾部suffixesToOverride元素
           for (String toRemove : suffixesToOverride) {
             if (trimmedUppercaseSql.endsWith(toRemove) || trimmedUppercaseSql.endsWith(toRemove.trim())) {
               int start = sql.length() - toRemove.trim().length();
@@ -150,6 +171,7 @@ public class TrimSqlNode implements SqlNode {
           }
         }
         if (suffix != null) {
+          // 拼接新尾部
           sql.append(" ");
           sql.append(suffix);
         }

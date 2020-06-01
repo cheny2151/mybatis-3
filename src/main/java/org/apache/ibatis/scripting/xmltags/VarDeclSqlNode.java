@@ -30,7 +30,9 @@ public class VarDeclSqlNode implements SqlNode {
 
   @Override
   public boolean apply(DynamicContext context) {
+    // 执行OGNL表达式从原绑定值中获取value
     final Object value = OgnlCache.getValue(expression, context.getBindings());
+    // 新增key，value绑定
     context.bind(name, value);
     return true;
   }

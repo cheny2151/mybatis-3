@@ -28,6 +28,7 @@ public class ForEachSqlNode implements SqlNode {
 
   private final ExpressionEvaluator evaluator;
   private final String collectionExpression;
+  // foreach子节点sql实体（必定为MixedSqlNode）
   private final SqlNode contents;
   private final String open;
   private final String close;
@@ -51,38 +52,50 @@ public class ForEachSqlNode implements SqlNode {
   @Override
   public boolean apply(DynamicContext context) {
     Map<String, Object> bindings = context.getBindings();
+    // 执行表达式获取foreach上collect对应的可遍历对象
     final Iterable<?> iterable = evaluator.evaluateIterable(collectionExpression, bindings);
     if (!iterable.iterator().hasNext()) {
+      // 不存在则返回
       return true;
     }
     boolean first = true;
+    // 拼接open
     applyOpen(context);
     int i = 0;
     for (Object o : iterable) {
+      // 暂缓context
       DynamicContext oldContext = context;
       if (first || separator == null) {
+        /* PrefixedContext为装饰者模式，用于增强原context(DynamicContext)的#appendSql,
+           增强内容：在拼接sql前拼接separator */
         context = new PrefixedContext(context, "");
       } else {
         context = new PrefixedContext(context, separator);
       }
+      // 获取一个不会重复的数值（每次调用都会自增）
       int uniqueNumber = context.getUniqueNumber();
       // Issue #709
       if (o instanceof Map.Entry) {
+        // 事实证明，foreach还可以遍历Map，遍历Map时，index为key，item为value
         @SuppressWarnings("unchecked")
         Map.Entry<Object, Object> mapEntry = (Map.Entry<Object, Object>) o;
         applyIndex(context, mapEntry.getKey(), uniqueNumber);
         applyItem(context, mapEntry.getValue(), uniqueNumber);
       } else {
+        // 遍历集合/数组时，index为index，item为集合元素
         applyIndex(context, i, uniqueNumber);
         applyItem(context, o, uniqueNumber);
       }
+      // FilteredDynamicContext为装饰者模式，用于增强原context(PrefixedContext)的#appendSql(此处为第二次装饰)
       contents.apply(new FilteredDynamicContext(configuration, context, index, item, uniqueNumber));
       if (first) {
         first = !((PrefixedContext) context).isPrefixApplied();
       }
+      // 执行完后赋值为原context
       context = oldContext;
       i++;
     }
+    // 拼接close
     applyClose(context);
     context.getBindings().remove(item);
     context.getBindings().remove(index);
@@ -91,14 +104,18 @@ public class ForEachSqlNode implements SqlNode {
 
   private void applyIndex(DynamicContext context, Object o, int i) {
     if (index != null) {
+      // index属性存在时，将Map的key或者集合的index绑定到index上
       context.bind(index, o);
+      //todo
       context.bind(itemizeItem(index, i), o);
     }
   }
 
   private void applyItem(DynamicContext context, Object o, int i) {
     if (item != null) {
+      // item属性存在时，将Map的value或者集合的元素绑定到item上
       context.bind(item, o);
+      //todo
       context.bind(itemizeItem(item, i), o);
     }
   }
@@ -119,6 +136,9 @@ public class ForEachSqlNode implements SqlNode {
     return ITEM_PREFIX + item + "_" + i;
   }
 
+  /**
+   * 装饰者--加强DynamicContext
+   */
   private static class FilteredDynamicContext extends DynamicContext {
     private final DynamicContext delegate;
     private final int index;
@@ -151,13 +171,16 @@ public class ForEachSqlNode implements SqlNode {
     @Override
     public void appendSql(String sql) {
       GenericTokenParser parser = new GenericTokenParser("#{", "}", content -> {
+        // 此为handler的lambda表达式，content为动态表达式(即#{}中间的内容)，下方是解析到#{}时的钩子。
+        // \s匹配任何空白字符，此处的正则表达，以空白字符开头并断言不存在以[.,:空白]结尾的断了段落替换为#itemizeItem执行的结果
         String newContent = content.replaceFirst("^\\s*" + item + "(?![^.,:\\s])", itemizeItem(item, index));
         if (itemIndex != null && newContent.equals(content)) {
+          // 有声明index属性并且上述正则不匹配则执行以下替换
           newContent = content.replaceFirst("^\\s*" + itemIndex + "(?![^.,:\\s])", itemizeItem(itemIndex, index));
         }
         return "#{" + newContent + "}";
       });
-
+      // 按上述handler解析动态sql并调用被装饰原类（PrefixedContext）#appendSql，执行被装饰者的逻辑
       delegate.appendSql(parser.parse(sql));
     }
 
@@ -168,7 +191,9 @@ public class ForEachSqlNode implements SqlNode {
 
   }
 
-
+  /**
+   * 装饰者--加强DynamicContext
+   */
   private class PrefixedContext extends DynamicContext {
     private final DynamicContext delegate;
     private final String prefix;
@@ -198,6 +223,7 @@ public class ForEachSqlNode implements SqlNode {
     @Override
     public void appendSql(String sql) {
       if (!prefixApplied && sql != null && sql.trim().length() > 0) {
+        // 此PrefixedContext只有第一次调用appendSql时候会拼接prefix
         delegate.appendSql(prefix);
         prefixApplied = true;
       }

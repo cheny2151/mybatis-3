@@ -42,10 +42,15 @@ public class SqlSourceBuilder extends BaseBuilder {
   public SqlSource parse(String originalSql, Class<?> parameterType, Map<String, Object> additionalParameters) {
     ParameterMappingTokenHandler handler = new ParameterMappingTokenHandler(configuration, parameterType, additionalParameters);
     GenericTokenParser parser = new GenericTokenParser("#{", "}", handler);
+    // 解析sql将#{}内容映射为一个ParameterMapping，并将#{}替换为?
     String sql = parser.parse(originalSql);
+    // 生成一个存放静态sql的对象
     return new StaticSqlSource(configuration, sql, handler.getParameterMappings());
   }
 
+  /**
+   * token解析钩子
+   */
   private static class ParameterMappingTokenHandler extends BaseBuilder implements TokenHandler {
 
     private List<ParameterMapping> parameterMappings = new ArrayList<>();
@@ -68,11 +73,22 @@ public class SqlSourceBuilder extends BaseBuilder {
       return "?";
     }
 
+    /**
+     * 将#{}的内容映射到ParameterMapping对象中
+     * 所以一个#{}对应一个ParameterMapping实例
+     *
+     * @param content #{}的内容
+     * @return
+     */
     private ParameterMapping buildParameterMapping(String content) {
+      // 将表达式解析成键值对的形式
       Map<String, String> propertiesMap = parseParameterMapping(content);
+      // 从解析结果中获取property
       String property = propertiesMap.get("property");
       Class<?> propertyType;
+      // 获取属性类型
       if (metaParameters.hasGetter(property)) { // issue #448 get type from additional params
+        // 通过Parameter获取属性类型（MetaObject）
         propertyType = metaParameters.getGetterType(property);
       } else if (typeHandlerRegistry.hasTypeHandler(parameterType)) {
         propertyType = parameterType;
@@ -81,6 +97,7 @@ public class SqlSourceBuilder extends BaseBuilder {
       } else if (property == null || Map.class.isAssignableFrom(parameterType)) {
         propertyType = Object.class;
       } else {
+        // 通过parameterType获取属性类型（MetaClass）
         MetaClass metaClass = MetaClass.forClass(parameterType, configuration.getReflectorFactory());
         if (metaClass.hasGetter(property)) {
           propertyType = metaClass.getGetterType(property);
@@ -88,6 +105,7 @@ public class SqlSourceBuilder extends BaseBuilder {
           propertyType = Object.class;
         }
       }
+      // 根据propertiesMap实例化成ParameterMapping对象
       ParameterMapping.Builder builder = new ParameterMapping.Builder(configuration, property, propertyType);
       Class<?> javaType = propertyType;
       String typeHandlerAlias = null;
@@ -111,7 +129,9 @@ public class SqlSourceBuilder extends BaseBuilder {
           builder.jdbcTypeName(value);
         } else if ("property".equals(name)) {
           // Do Nothing
+          // 构造Builder的时候已经传入该property
         } else if ("expression".equals(name)) {
+          // 不支持表达式
           throw new BuilderException("Expression based parameters are not supported yet");
         } else {
           throw new BuilderException("An invalid property '" + name + "' was found in mapping #{" + content + "}.  Valid properties are " + PARAMETER_PROPERTIES);
@@ -120,6 +140,7 @@ public class SqlSourceBuilder extends BaseBuilder {
       if (typeHandlerAlias != null) {
         builder.typeHandler(resolveTypeHandler(javaType, typeHandlerAlias));
       }
+      // 生成ParameterMapping
       return builder.build();
     }
 

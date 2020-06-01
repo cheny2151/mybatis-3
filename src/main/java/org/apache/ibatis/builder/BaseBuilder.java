@@ -15,11 +15,6 @@
  */
 package org.apache.ibatis.builder;
 
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.regex.Pattern;
-
 import org.apache.ibatis.mapping.ParameterMode;
 import org.apache.ibatis.mapping.ResultSetType;
 import org.apache.ibatis.session.Configuration;
@@ -28,12 +23,21 @@ import org.apache.ibatis.type.TypeAliasRegistry;
 import org.apache.ibatis.type.TypeHandler;
 import org.apache.ibatis.type.TypeHandlerRegistry;
 
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.regex.Pattern;
+
 /**
  * @author Clinton Begin
  */
 public abstract class BaseBuilder {
+
+  // mybatis全局Configuration对象
   protected final Configuration configuration;
+  // 类型别名注册器
   protected final TypeAliasRegistry typeAliasRegistry;
+  // 类型处理器handler注册器
   protected final TypeHandlerRegistry typeHandlerRegistry;
 
   public BaseBuilder(Configuration configuration) {
@@ -46,6 +50,13 @@ public abstract class BaseBuilder {
     return configuration;
   }
 
+  /**
+   * 返回一个Pattern对象
+   *
+   * @param regex        指定正则表达式
+   * @param defaultValue 默认正则表达式
+   * @return Pattern对象
+   */
   protected Pattern parseExpression(String regex, String defaultValue) {
     return Pattern.compile(regex == null ? defaultValue : regex);
   }
@@ -96,6 +107,12 @@ public abstract class BaseBuilder {
     }
   }
 
+  /**
+   * 通过别名获取实例
+   *
+   * @param alias 别名或者全类名
+   * @return
+   */
   protected Object createInstance(String alias) {
     Class<?> clazz = resolveClass(alias);
     if (clazz == null) {
@@ -108,6 +125,11 @@ public abstract class BaseBuilder {
     }
   }
 
+  /**
+   * 通过typeAliasRegistry解析Class
+   *
+   * @param alias 别名或者全类名
+   */
   protected <T> Class<? extends T> resolveClass(String alias) {
     if (alias == null) {
       return null;
@@ -119,19 +141,30 @@ public abstract class BaseBuilder {
     }
   }
 
+  /**
+   * 解析TypeHandler
+   *
+   * @param javaType TypeHandler处理的java类型（最终的作用：不为null时在反射typeHandler构造函数实例化对象的时候作为参数传入例如EnumTypeHandler）
+   * @param typeHandlerAlias typeHandler的别名/全类名
+   * @return
+   */
   protected TypeHandler<?> resolveTypeHandler(Class<?> javaType, String typeHandlerAlias) {
     if (typeHandlerAlias == null) {
       return null;
     }
+    // 获取typeHandlerAlias对应的Class（若为别名则必须在TypeAliasRegistry有注册对应映射关系）
     Class<?> type = resolveClass(typeHandlerAlias);
     if (type != null && !TypeHandler.class.isAssignableFrom(type)) {
       throw new BuilderException("Type " + type.getName() + " is not a valid TypeHandler because it does not implement TypeHandler interface");
     }
     @SuppressWarnings("unchecked") // already verified it is a TypeHandler
-    Class<? extends TypeHandler<?>> typeHandlerType = (Class<? extends TypeHandler<?>>) type;
+            Class<? extends TypeHandler<?>> typeHandlerType = (Class<? extends TypeHandler<?>>) type;
     return resolveTypeHandler(javaType, typeHandlerType);
   }
 
+  /**
+   * 解析并获取TypeHandler实例
+   */
   protected TypeHandler<?> resolveTypeHandler(Class<?> javaType, Class<? extends TypeHandler<?>> typeHandlerType) {
     if (typeHandlerType == null) {
       return null;
@@ -146,6 +179,7 @@ public abstract class BaseBuilder {
   }
 
   protected <T> Class<? extends T> resolveAlias(String alias) {
+    // 通过别名/全类名解析Class
     return typeAliasRegistry.resolveAlias(alias);
   }
 }
