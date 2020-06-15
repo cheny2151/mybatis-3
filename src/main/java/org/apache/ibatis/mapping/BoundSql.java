@@ -41,8 +41,9 @@ public class BoundSql {
   private final List<ParameterMapping> parameterMappings;
   // 绑定的参数
   private final Object parameterObject;
-  // 绑定的额外参数（目前看与parameterObject）
+  // 绑定的额外参数
   private final Map<String, Object> additionalParameters;
+  // 绑定的额外参数的MetaObject
   private final MetaObject metaParameters;
 
   public BoundSql(Configuration configuration, String sql, List<ParameterMapping> parameterMappings, Object parameterObject) {

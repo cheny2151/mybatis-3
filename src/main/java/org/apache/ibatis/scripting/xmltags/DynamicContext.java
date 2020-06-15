@@ -31,14 +31,20 @@ import org.apache.ibatis.session.Configuration;
  */
 public class DynamicContext {
 
+  /**
+   * 内置参数key
+   */
   public static final String PARAMETER_OBJECT_KEY = "_parameter";
   public static final String DATABASE_ID_KEY = "_databaseId";
 
   static {
+    // 设置OGNL表达式对ContextMap类型参数的访问方式
     OgnlRuntime.setPropertyAccessor(ContextMap.class, new ContextAccessor());
   }
 
+  // 动态sql上下文绑定的参数（Mapper原始入参的包装+额外参数additional）
   private final ContextMap bindings;
+  // ⭐存放动态sql拼接的结果
   private final StringJoiner sqlBuilder = new StringJoiner(" ");
   private int uniqueNumber = 0;
 
@@ -101,6 +107,9 @@ public class DynamicContext {
     }
   }
 
+  /**
+   * 定义OGNL表达式参数值获取方式
+   */
   static class ContextAccessor implements PropertyAccessor {
 
     @Override

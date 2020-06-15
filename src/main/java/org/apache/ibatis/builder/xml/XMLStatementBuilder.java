@@ -115,6 +115,7 @@ public class XMLStatementBuilder extends BaseBuilder {
     // 开始解析子节点（默认landDriver实现为XMLLanguageDriver），此处只会返回DynamicSqlSource(动态)和RawSqlSource(静态)的SqlSource实现类
     SqlSource sqlSource = langDriver.createSqlSource(configuration, context, parameterTypeClass);
     // 获取select、insert、update、delete节点的各个属性
+    // StatementType为jdbc的Statement类型，默认为PREPARED（预编译sql,可存在?占位符）
     StatementType statementType = StatementType.valueOf(context.getStringAttribute("statementType", StatementType.PREPARED.toString()));
     Integer fetchSize = context.getIntAttribute("fetchSize");
     Integer timeout = context.getIntAttribute("timeout");

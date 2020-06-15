@@ -102,11 +102,13 @@ public class MapperAnnotationBuilder {
   private final Class<?> type;
 
   static {
+    // sql注解
     SQL_ANNOTATION_TYPES.add(Select.class);
     SQL_ANNOTATION_TYPES.add(Insert.class);
     SQL_ANNOTATION_TYPES.add(Update.class);
     SQL_ANNOTATION_TYPES.add(Delete.class);
 
+    // PROVIDER方式声明sql
     SQL_PROVIDER_ANNOTATION_TYPES.add(SelectProvider.class);
     SQL_PROVIDER_ANNOTATION_TYPES.add(InsertProvider.class);
     SQL_PROVIDER_ANNOTATION_TYPES.add(UpdateProvider.class);
@@ -120,26 +122,39 @@ public class MapperAnnotationBuilder {
     this.type = type;
   }
 
+  /**
+   * 主要为解析Mapper接口上存在相应注解的方法
+   */
   public void parse() {
     String resource = type.toString();
+    // 此处resource为Mapper接口类全名
     if (!configuration.isResourceLoaded(resource)) {
+      // 加载xml并解析（此处为解析Mapper.xml部分）
       loadXmlResource();
       configuration.addLoadedResource(resource);
       assistant.setCurrentNamespace(type.getName());
+      // 开始解析注解（此处为解析Mapper接口注解部分）
+      // 解析@CacheNamespace
       parseCache();
+      // 解析@CacheNamespaceRef
       parseCacheRef();
+      // 获取所有接口方法
       Method[] methods = type.getMethods();
       for (Method method : methods) {
         try {
           // issue #237
+          // 忽略桥接方法
           if (!method.isBridge()) {
+            // 解析MappedStatement（@select,@SelectProvider等）
             parseStatement(method);
           }
         } catch (IncompleteElementException e) {
+          // 添加到未完成解析Method集合
           configuration.addIncompleteMethod(new MethodResolver(this, method));
         }
       }
     }
+    // 尝试解析未完成解析的MethodResolver
     parsePendingMethods();
   }
 
@@ -158,24 +173,33 @@ public class MapperAnnotationBuilder {
     }
   }
 
+  /**
+   * 若存在对应的Mapper并且未加载则进行加载
+   */
   private void loadXmlResource() {
     // Spring may not know the real resource name so we check a flag
     // to prevent loading again a resource twice
     // this flag is set at XMLMapperBuilder#bindMapperForNamespace
+    // 若已经通过资源加载，则isResourceLoaded返回true（见XMLMapperBuilder#bindMapperForNamespace）
     if (!configuration.isResourceLoaded("namespace:" + type.getName())) {
+      // 从module中查找Mapper.xml
       String xmlResource = type.getName().replace('.', '/') + ".xml";
       // #1347
       InputStream inputStream = type.getResourceAsStream("/" + xmlResource);
       if (inputStream == null) {
         // Search XML mapper that is not in the module but in the classpath.
+        // 从classpath中查找Mapper.xml
         try {
           inputStream = Resources.getResourceAsStream(type.getClassLoader(), xmlResource);
         } catch (IOException e2) {
           // ignore, resource is not required
         }
       }
+      // 若不存在对应xml，则无需执行XMLMapperBuilder解析xml部分
       if (inputStream != null) {
+        // 将Mapper接口类全名作为namespace传入XMLMapperBuilder
         XMLMapperBuilder xmlParser = new XMLMapperBuilder(inputStream, assistant.getConfiguration(), xmlResource, configuration.getSqlFragments(), type.getName());
+        // Mapper解析交由XMLMapperBuilder
         xmlParser.parse();
       }
     }
@@ -225,16 +249,26 @@ public class MapperAnnotationBuilder {
 
   private String parseResultMap(Method method) {
     Class<?> returnType = getReturnType(method);
+    // 获取@ConstructorArgs
     ConstructorArgs args = method.getAnnotation(ConstructorArgs.class);
+    // @Results相当于Mapper.xml的<resultMap>，配置示例：BoundAuthorMapper#selectAuthor
     Results results = method.getAnnotation(Results.class);
+    // @TypeDiscriminator
     TypeDiscriminator typeDiscriminator = method.getAnnotation(TypeDiscriminator.class);
+    // 生成方法对应的resultMap的id
     String resultMapId = generateResultMapName(method);
+    // 创建resultMapping与resultMap，添加到全局resultMaps中
     applyResultMap(resultMapId, returnType, argsIf(args), resultsIf(results), typeDiscriminator);
     return resultMapId;
   }
 
+  /**
+   * 生成注解形式的resultMap的id
+   *
+   * @param method Mapper接口方法
+   * @return
+   */
   private String generateResultMapName(Method method) {
-    // @Results相当于Mapper.xml的<resultMap>
     Results results = method.getAnnotation(Results.class);
     if (results != null && !results.id().isEmpty()) {
       return type.getName() + "." + results.id();
@@ -294,18 +328,33 @@ public class MapperAnnotationBuilder {
     return null;
   }
 
+  /**
+   * 一个Mapper接口方法生成一个MappedStatement：
+   * 类似于解析Mapper.xml的<select/>等sql节点，
+   * 此处为注解类型代替xml,通过解析各种注解获取属性并最终生成MappedStatement
+   *
+   * @param method Mapper接口方法
+   */
   void parseStatement(Method method) {
+    // 获取参数类型
     Class<?> parameterTypeClass = getParameterType(method);
+    // 默认实现为XMLLanguageDriver
     LanguageDriver languageDriver = getLanguageDriver(method);
+    // ⭐通过注解生成SqlSource（相当于解析<select/>等sql节点生成SqlSource）
     SqlSource sqlSource = getSqlSourceFromAnnotations(method, parameterTypeClass, languageDriver);
+    // 存在上述两种类型注解中的一种则SqlSource不为null，创建一个MappedStatement
     if (sqlSource != null) {
+      // @option，相当于xml中<select/>..等sql节点上的属性
       Options options = method.getAnnotation(Options.class);
+      // 拼接MappedStatement的id（相当于xml中的namespace+id）
       final String mappedStatementId = type.getName() + "." + method.getName();
       Integer fetchSize = null;
       Integer timeout = null;
       StatementType statementType = StatementType.PREPARED;
       ResultSetType resultSetType = null;
+      // 获取sql类型
       SqlCommandType sqlCommandType = getSqlCommandType(method);
+      // 是否为select
       boolean isSelect = sqlCommandType == SqlCommandType.SELECT;
       boolean flushCache = !isSelect;
       boolean useCache = isSelect;
@@ -313,6 +362,7 @@ public class MapperAnnotationBuilder {
       KeyGenerator keyGenerator;
       String keyProperty = null;
       String keyColumn = null;
+      // 从@SelectKey、options中选择最合适的KeyGenerator
       if (SqlCommandType.INSERT.equals(sqlCommandType) || SqlCommandType.UPDATE.equals(sqlCommandType)) {
         // first check for SelectKey annotation - that overrides everything else
         SelectKey selectKey = method.getAnnotation(SelectKey.class);
@@ -331,6 +381,7 @@ public class MapperAnnotationBuilder {
       }
 
       if (options != null) {
+        // 使用@options中的属性值
         if (FlushCachePolicy.TRUE.equals(options.flushCache())) {
           flushCache = true;
         } else if (FlushCachePolicy.FALSE.equals(options.flushCache())) {
@@ -344,13 +395,16 @@ public class MapperAnnotationBuilder {
       }
 
       String resultMapId = null;
+      // 根据@ResultMap获取ResultMap的id
       ResultMap resultMapAnnotation = method.getAnnotation(ResultMap.class);
       if (resultMapAnnotation != null) {
         resultMapId = String.join(",", resultMapAnnotation.value());
       } else if (isSelect) {
+        // 未指定resultMap
         resultMapId = parseResultMap(method);
       }
 
+      // 创建并添加MappedStatement（与xml节点方式相同）
       assistant.addMappedStatement(
           mappedStatementId,
           sqlSource,
@@ -379,6 +433,9 @@ public class MapperAnnotationBuilder {
     }
   }
 
+  /**
+   * 通过@Lang获取LanguageDriver，不存在则使用默认实现
+   */
   private LanguageDriver getLanguageDriver(Method method) {
     Lang lang = method.getAnnotation(Lang.class);
     Class<? extends LanguageDriver> langClass = null;
@@ -392,11 +449,14 @@ public class MapperAnnotationBuilder {
     Class<?> parameterType = null;
     Class<?>[] parameterTypes = method.getParameterTypes();
     for (Class<?> currentParameterType : parameterTypes) {
+      // 不为RowBounds并且不为ResultHandler
       if (!RowBounds.class.isAssignableFrom(currentParameterType) && !ResultHandler.class.isAssignableFrom(currentParameterType)) {
         if (parameterType == null) {
+          // 单个有效参数则为返回该类型
           parameterType = currentParameterType;
         } else {
           // issue #135
+          // 多个有效参数则返回ParamMap
           parameterType = ParamMap.class;
         }
       }
@@ -461,18 +521,28 @@ public class MapperAnnotationBuilder {
     return returnType;
   }
 
+  /**
+   * 通过注解生成SqlSource
+   */
   private SqlSource getSqlSourceFromAnnotations(Method method, Class<?> parameterType, LanguageDriver languageDriver) {
     try {
+      // 获取sql类型注解
       Class<? extends Annotation> sqlAnnotationType = getSqlAnnotationType(method);
+      // 获取sqlProvider类型注解
       Class<? extends Annotation> sqlProviderAnnotationType = getSqlProviderAnnotationType(method);
       if (sqlAnnotationType != null) {
         if (sqlProviderAnnotationType != null) {
+          // 不可同时存在两种类型的注解
           throw new BindingException("You cannot supply both a static SQL and SqlProvider to method named " + method.getName());
         }
+        // sql类型注解(如@Select)
         Annotation sqlAnnotation = method.getAnnotation(sqlAnnotationType);
+        // 注解中的value属性(为String[]类型)
         final String[] strings = (String[]) sqlAnnotation.getClass().getMethod("value").invoke(sqlAnnotation);
+        // 通过XMLLanguageDriver#createSqlSource生成SqlSource
         return buildSqlSourceFromStrings(strings, parameterType, languageDriver);
       } else if (sqlProviderAnnotationType != null) {
+        // provider类型注解(如@SelectProvider)，则解析生成ProviderSqlSource实体
         Annotation sqlProviderAnnotation = method.getAnnotation(sqlProviderAnnotationType);
         return new ProviderSqlSource(assistant.getConfiguration(), sqlProviderAnnotation, type, method);
       }
@@ -492,9 +562,11 @@ public class MapperAnnotationBuilder {
   }
 
   private SqlCommandType getSqlCommandType(Method method) {
+    // 优先获取@select...等注解
     Class<? extends Annotation> type = getSqlAnnotationType(method);
 
     if (type == null) {
+      // 次之@SelectProvider...等注解
       type = getSqlProviderAnnotationType(method);
 
       if (type == null) {
@@ -523,6 +595,13 @@ public class MapperAnnotationBuilder {
     return chooseAnnotationType(method, SQL_PROVIDER_ANNOTATION_TYPES);
   }
 
+  /**
+   * 尝试在方法method中获取types类型的注解
+   *
+   * @param method 方法
+   * @param types 注解类型集合
+   * @return 命中的注解类型
+   */
   private Class<? extends Annotation> chooseAnnotationType(Method method, Set<Class<? extends Annotation>> types) {
     for (Class<? extends Annotation> type : types) {
       Annotation annotation = method.getAnnotation(type);

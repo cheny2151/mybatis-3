@@ -66,6 +66,7 @@ public abstract class BaseStatementHandler implements StatementHandler {
 
     this.boundSql = boundSql;
 
+    // 创建ParameterHandler（实现类为DefaultParameterHandler）
     this.parameterHandler = configuration.newParameterHandler(mappedStatement, parameterObject, boundSql);
     this.resultSetHandler = configuration.newResultSetHandler(executor, mappedStatement, rowBounds, parameterHandler, resultHandler, boundSql);
   }
@@ -85,8 +86,11 @@ public abstract class BaseStatementHandler implements StatementHandler {
     ErrorContext.instance().sql(boundSql.getSql());
     Statement statement = null;
     try {
+      // 返回实现的对应的Statement类型（默认为PreparedStatement，预编译sql）
       statement = instantiateStatement(connection);
+      // 设置Statement超时时间
       setStatementTimeout(statement, transactionTimeout);
+      // 设置fetchSize
       setFetchSize(statement);
       return statement;
     } catch (SQLException e) {

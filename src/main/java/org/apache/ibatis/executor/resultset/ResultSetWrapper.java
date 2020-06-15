@@ -55,7 +55,9 @@ public class ResultSetWrapper {
     this.resultSet = rs;
     final ResultSetMetaData metaData = rs.getMetaData();
     final int columnCount = metaData.getColumnCount();
+    // 从jdbc的resultSet中提取：列名、jdbc类型、java类型
     for (int i = 1; i <= columnCount; i++) {
+      // isUseColumnLabel默认为true
       columnNames.add(configuration.isUseColumnLabel() ? metaData.getColumnLabel(i) : metaData.getColumnName(i));
       jdbcTypes.add(JdbcType.forCode(metaData.getColumnType(i)));
       classNames.add(metaData.getColumnClassName(i));
@@ -149,8 +151,10 @@ public class ResultSetWrapper {
     for (String columnName : columnNames) {
       final String upperColumnName = columnName.toUpperCase(Locale.ENGLISH);
       if (mappedColumns.contains(upperColumnName)) {
+        // resultMap声明的column
         mappedColumnNames.add(upperColumnName);
       } else {
+        // resultMap未声明的column
         unmappedColumnNames.add(columnName);
       }
     }
@@ -158,6 +162,9 @@ public class ResultSetWrapper {
     unMappedColumnNamesMap.put(getMapKey(resultMap, columnPrefix), unmappedColumnNames);
   }
 
+  /**
+   * 获取resultMap中声明的column集合
+   */
   public List<String> getMappedColumnNames(ResultMap resultMap, String columnPrefix) throws SQLException {
     List<String> mappedColumnNames = mappedColumnNamesMap.get(getMapKey(resultMap, columnPrefix));
     if (mappedColumnNames == null) {

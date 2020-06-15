@@ -43,6 +43,7 @@ public final class OgnlCache {
   public static Object getValue(String expression, Object root) {
     try {
       Map context = Ognl.createDefaultContext(root, MEMBER_ACCESS, CLASS_RESOLVER, null);
+      // 解析表达式并执行获取结果
       return Ognl.getValue(parseExpression(expression), context, root);
     } catch (OgnlException e) {
       throw new BuilderException("Error evaluating expression '" + expression + "'. Cause: " + e, e);
@@ -50,8 +51,10 @@ public final class OgnlCache {
   }
 
   private static Object parseExpression(String expression) throws OgnlException {
+    // 尝试从缓存中获取
     Object node = expressionCache.get(expression);
     if (node == null) {
+      // 解析表达式并缓存
       node = Ognl.parseExpression(expression);
       expressionCache.put(expression, node);
     }

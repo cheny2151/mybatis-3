@@ -17,6 +17,7 @@ package org.apache.ibatis.scripting.defaults;
 
 import java.util.HashMap;
 
+import org.apache.ibatis.binding.MapperMethod;
 import org.apache.ibatis.builder.SqlSourceBuilder;
 import org.apache.ibatis.mapping.BoundSql;
 import org.apache.ibatis.mapping.SqlSource;
@@ -24,9 +25,10 @@ import org.apache.ibatis.scripting.xmltags.DynamicContext;
 import org.apache.ibatis.scripting.xmltags.DynamicSqlSource;
 import org.apache.ibatis.scripting.xmltags.SqlNode;
 import org.apache.ibatis.session.Configuration;
+import org.apache.ibatis.session.defaults.DefaultSqlSession;
 
 /**
- * 静态SqlSource。 它比{@link DynamicSqlSource}更快，因为映射是在启动期间计算。
+ * 静态SqlSource（不存在${}或者<if/>之类的节点）。 它比{@link DynamicSqlSource}更快，因为映射是在启动期间计算。
  * Static SqlSource. It is faster than {@link DynamicSqlSource} because mappings are
  * calculated during startup.
  *
@@ -54,6 +56,13 @@ public class RawSqlSource implements SqlSource {
     return context.getSql();
   }
 
+  /**
+   *
+   * @param parameterObject Mapper接口方法实际入参 ->
+   *                        经过{@link MapperMethod.MethodSignature#convertArgsToSqlCommandParam(java.lang.Object[]))后 ->
+   *                        又经过{@link DefaultSqlSession#wrapCollection(java.lang.Object)}
+   * @return
+   */
   @Override
   public BoundSql getBoundSql(Object parameterObject) {
     return sqlSource.getBoundSql(parameterObject);

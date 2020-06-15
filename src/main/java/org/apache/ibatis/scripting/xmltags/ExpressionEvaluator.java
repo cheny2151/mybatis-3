@@ -28,6 +28,13 @@ import org.apache.ibatis.builder.BuilderException;
  */
 public class ExpressionEvaluator {
 
+  /**
+   * IfSqlNode会使用此方法，执行test表达式
+   *
+   * @param expression      test表达式
+   * @param parameterObject 上下文参数
+   * @return
+   */
   public boolean evaluateBoolean(String expression, Object parameterObject) {
     // 执行ognl表达式
     Object value = OgnlCache.getValue(expression, parameterObject);
@@ -42,18 +49,28 @@ public class ExpressionEvaluator {
     return value != null;
   }
 
+  /**
+   * 应用ForEachSqlNode时会使用此方法返回可遍历的值
+   *
+   * @param expression      集合collection表达式
+   * @param parameterObject 上下文参数
+   * @return
+   */
   public Iterable<?> evaluateIterable(String expression, Object parameterObject) {
+    // 执行表达式获取值
     Object value = OgnlCache.getValue(expression, parameterObject);
     if (value == null) {
       throw new BuilderException("The expression '" + expression + "' evaluated to a null value.");
     }
     if (value instanceof Iterable) {
+      // Iterable子类，则直接返回
       return (Iterable<?>) value;
     }
     if (value.getClass().isArray()) {
       // the array may be primitive, so Arrays.asList() may throw
       // a ClassCastException (issue 209).  Do the work manually
       // Curse primitives! :) (JGB)
+      // 数组包装为集合
       int size = Array.getLength(value);
       List<Object> answer = new ArrayList<>();
       for (int i = 0; i < size; i++) {
@@ -63,6 +80,7 @@ public class ExpressionEvaluator {
       return answer;
     }
     if (value instanceof Map) {
+      // Map返回entrySet
       return ((Map) value).entrySet();
     }
     throw new BuilderException("Error evaluating expression '" + expression + "'.  Return value (" + value + ") was not iterable.");

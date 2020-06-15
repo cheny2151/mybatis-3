@@ -60,8 +60,10 @@ public class PreparedStatementHandler extends BaseStatementHandler {
 
   @Override
   public <E> List<E> query(Statement statement, ResultHandler resultHandler) throws SQLException {
+    // PreparedStatement类型(存在?占位)的Statement已经设置完sql与参数
     PreparedStatement ps = (PreparedStatement) statement;
     ps.execute();
+    // 交由DefaultResultSetHandler处理结果映射
     return resultSetHandler.handleResultSets(ps);
   }
 
@@ -83,14 +85,17 @@ public class PreparedStatementHandler extends BaseStatementHandler {
         return connection.prepareStatement(sql, keyColumnNames);
       }
     } else if (mappedStatement.getResultSetType() == ResultSetType.DEFAULT) {
+      // 使用默认ResultSetType
       return connection.prepareStatement(sql);
     } else {
+      // 使用指定ResultSetType
       return connection.prepareStatement(sql, mappedStatement.getResultSetType().getValue(), ResultSet.CONCUR_READ_ONLY);
     }
   }
 
   @Override
   public void parameterize(Statement statement) throws SQLException {
+    // 通过DefaultParameterHandler设置PreparedStatement的参数，parameterHandler在初始化PreparedStatementHandler时候创建
     parameterHandler.setParameters((PreparedStatement) statement);
   }
 

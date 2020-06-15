@@ -62,14 +62,14 @@ public class MapperMethod {
    * 执行Mapper的sql方法
    *
    * @param sqlSession sqlSession
-   * @param args       参数
+   * @param args       Mapper接口参数
    * @return
    */
   public Object execute(SqlSession sqlSession, Object[] args) {
     Object result;
     switch (command.getType()) {
       case INSERT: {
-        // 转换为Mapper.xml中使用的参数
+        // 将Mapper接口参数转换为Mapper.xml中使用的参数
         Object param = method.convertArgsToSqlCommandParam(args);
         result = rowCountResult(sqlSession.insert(command.getName(), param));
         break;

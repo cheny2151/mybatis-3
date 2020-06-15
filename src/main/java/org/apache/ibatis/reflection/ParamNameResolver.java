@@ -129,6 +129,7 @@ public class ParamNameResolver {
       // 若无@param并且只有一个参数，就直接返回此参数的值
       return args[names.firstKey()];
     } else {
+      // 多个有效参数返回ParamMap
       final Map<String, Object> param = new ParamMap<>();
       int i = 0;
       for (Map.Entry<Integer, String> entry : names.entrySet()) {

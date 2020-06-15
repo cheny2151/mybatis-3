@@ -81,6 +81,7 @@ public class XMLConfigBuilder extends BaseBuilder {
   }
 
   private XMLConfigBuilder(XPathParser parser, String environment, Properties props) {
+    // 此处为全局configuration初始化创建的地方
     super(new Configuration());
     ErrorContext.instance().resource("SQL Mapper Configuration");
     // 设置全局变量
@@ -95,7 +96,7 @@ public class XMLConfigBuilder extends BaseBuilder {
       throw new BuilderException("Each XMLConfigBuilder can only be used once.");
     }
     parsed = true;
-    // 解析/configuration节点
+    // 解析<configuration/>节点
     parseConfiguration(parser.evalNode("/configuration"));
     return configuration;
   }

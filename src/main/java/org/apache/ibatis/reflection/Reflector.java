@@ -361,6 +361,7 @@ public class Reflector {
 
   /**
    * Checks whether can control member accessible.
+   * 检查是否有访问private,protected的权限
    *
    * @return If can control member accessible, it return {@literal true}
    * @since 3.5.0

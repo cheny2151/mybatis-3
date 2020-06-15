@@ -17,13 +17,15 @@ package org.apache.ibatis.builder;
 
 import java.util.List;
 
+import org.apache.ibatis.binding.MapperMethod;
 import org.apache.ibatis.mapping.BoundSql;
 import org.apache.ibatis.mapping.ParameterMapping;
 import org.apache.ibatis.mapping.SqlSource;
 import org.apache.ibatis.session.Configuration;
+import org.apache.ibatis.session.defaults.DefaultSqlSession;
 
 /**
- * 存放已经解析完毕的静态sql，单纯的为了创建BoundSql
+ * 存放已经替换#{}为?完毕的静态sql，单纯的为了创建BoundSql
  * @author Clinton Begin
  */
 public class StaticSqlSource implements SqlSource {
@@ -44,6 +46,13 @@ public class StaticSqlSource implements SqlSource {
     this.configuration = configuration;
   }
 
+  /**
+   *
+   * @param parameterObject Mapper接口方法实际入参 ->
+   *                        经过{@link MapperMethod.MethodSignature#convertArgsToSqlCommandParam(java.lang.Object[]))后 ->
+   *                        又经过{@link DefaultSqlSession#wrapCollection(java.lang.Object)}
+   * @return
+   */
   @Override
   public BoundSql getBoundSql(Object parameterObject) {
     return new BoundSql(configuration, sql, parameterMappings, parameterObject);

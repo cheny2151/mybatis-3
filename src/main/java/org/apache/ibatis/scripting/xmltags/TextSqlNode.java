@@ -77,7 +77,9 @@ public class TextSqlNode implements SqlNode {
       } else if (SimpleTypeRegistry.isSimpleType(parameter.getClass())) {
         context.getBindings().put("value", parameter);
       }
+      // 使用OGNL解析${}中的表达式
       Object value = OgnlCache.getValue(content, context.getBindings());
+      // ${}中的表达式结果为null会转换为空字符串,原sql拼接上空字符串后sql不变
       String srtValue = value == null ? "" : String.valueOf(value); // issue #274 return "" instead of "null"
       checkInjection(srtValue);
       return srtValue;

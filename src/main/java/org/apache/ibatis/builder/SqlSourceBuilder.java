@@ -88,9 +88,10 @@ public class SqlSourceBuilder extends BaseBuilder {
       Class<?> propertyType;
       // 获取属性类型
       if (metaParameters.hasGetter(property)) { // issue #448 get type from additional params
-        // 通过Parameter获取属性类型（MetaObject）
+        // 获取额外参数additional的类型，（metaParameters为额外参数additional）
         propertyType = metaParameters.getGetterType(property);
       } else if (typeHandlerRegistry.hasTypeHandler(parameterType)) {
+        // 基本类型
         propertyType = parameterType;
       } else if (JdbcType.CURSOR.name().equals(propertiesMap.get("jdbcType"))) {
         propertyType = java.sql.ResultSet.class;

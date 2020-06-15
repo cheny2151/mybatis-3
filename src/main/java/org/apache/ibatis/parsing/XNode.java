@@ -73,7 +73,7 @@ public class XNode {
   /**
    * 获取节点身份签名
    * 往父节点遍历拼接出签名
-   * 例如：association[property]_result[value]
+   * namespace.resultMap[resultMapId]_collection[property]
    */
   public String getValueBasedIdentifier() {
     StringBuilder builder = new StringBuilder();

@@ -220,8 +220,10 @@ public class MapperBuilderAssistant extends BaseBuilder {
     // extend：继承的resultMap的id
     extend = applyCurrentNamespace(extend, true);
 
+    // 存在继承关系
     if (extend != null) {
       if (!configuration.hasResultMap(extend)) {
+        // 被继承的resultMap还未解析装载，则抛出IncompleteElementException异常（可通过捕获此异常将ResultMapResolver存放到未完成解析列表）
         throw new IncompleteElementException("Could not find a parent resultmap with id '" + extend + "'");
       }
       ResultMap resultMap = configuration.getResultMap(extend);
@@ -335,7 +337,7 @@ public class MapperBuilderAssistant extends BaseBuilder {
         .useCache(valueOrDefault(useCache, isSelect)) // <select/>默认为true
         .cache(currentCache);
 
-    // parameterMap准备弃用，无需关注
+    // 获取参数实体，若<parameterMap/>与parameterType都为空则为null
     ParameterMap statementParameterMap = getStatementParameterMap(parameterMap, parameterType, id);
     if (statementParameterMap != null) {
       statementBuilder.parameterMap(statementParameterMap);
@@ -358,12 +360,14 @@ public class MapperBuilderAssistant extends BaseBuilder {
     parameterMapName = applyCurrentNamespace(parameterMapName, true);
     ParameterMap parameterMap = null;
     if (parameterMapName != null) {
+      // parameterMap准备弃用，无需关注
       try {
         parameterMap = configuration.getParameterMap(parameterMapName);
       } catch (IllegalArgumentException e) {
         throw new IncompleteElementException("Could not find parameter map " + parameterMapName, e);
       }
     } else if (parameterTypeClass != null) {
+      // 用parameterType生成ParameterMap
       List<ParameterMapping> parameterMappings = new ArrayList<>();
       parameterMap = new ParameterMap.Builder(
           configuration,
@@ -389,7 +393,7 @@ public class MapperBuilderAssistant extends BaseBuilder {
     // 获取指向resultMap的id
     resultMap = applyCurrentNamespace(resultMap, true);
 
-    // todo 为何是多个','隔开
+    // 多个resultMap','隔开
     List<ResultMap> resultMaps = new ArrayList<>();
     if (resultMap != null) {
       String[] resultMapNames = resultMap.split(",");

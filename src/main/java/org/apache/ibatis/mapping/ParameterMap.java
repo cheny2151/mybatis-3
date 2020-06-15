@@ -22,6 +22,7 @@ import org.apache.ibatis.session.Configuration;
 
 /**
  * <parameterMap>节点实体对象
+ * 或者根据parameterType生成的实体
  *
  * @author Clinton Begin
  */

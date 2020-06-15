@@ -15,10 +15,12 @@
  */
 package org.apache.ibatis.scripting.xmltags;
 
+import org.apache.ibatis.binding.MapperMethod;
 import org.apache.ibatis.builder.SqlSourceBuilder;
 import org.apache.ibatis.mapping.BoundSql;
 import org.apache.ibatis.mapping.SqlSource;
 import org.apache.ibatis.session.Configuration;
+import org.apache.ibatis.session.defaults.DefaultSqlSession;
 
 /**
  * @author Clinton Begin
@@ -37,8 +39,16 @@ public class DynamicSqlSource implements SqlSource {
     this.rootSqlNode = rootSqlNode;
   }
 
+  /**
+   *
+   * @param parameterObject Mapper接口方法实际入参 ->
+   *                        经过{@link MapperMethod.MethodSignature#convertArgsToSqlCommandParam(java.lang.Object[]))后 ->
+   *                        又经过{@link DefaultSqlSession#wrapCollection(java.lang.Object)}
+   * @return
+   */
   @Override
   public BoundSql getBoundSql(Object parameterObject) {
+    // parameterObject为Mapper接口原始参数
     // 创建DynamicContext，用于存放sql拼接
     DynamicContext context = new DynamicContext(configuration, parameterObject);
     /* 从根节点开始调用#apply()，最终将根据绑定值解析动态sql节点拼接成静态sql存放于context#sqlBuilder成员变量，
@@ -46,7 +56,7 @@ public class DynamicSqlSource implements SqlSource {
     rootSqlNode.apply(context);
     SqlSourceBuilder sqlSourceParser = new SqlSourceBuilder(configuration);
     Class<?> parameterType = parameterObject == null ? Object.class : parameterObject.getClass();
-    // 解析#{}返回StaticSqlSource
+    // 解析#{}返回StaticSqlSource（context.getBindings()为parameterObject再外加额外参数）
     SqlSource sqlSource = sqlSourceParser.parse(context.getSql(), parameterType, context.getBindings());
     BoundSql boundSql = sqlSource.getBoundSql(parameterObject);
     // 将DynamicContext#bindings属性中属于Map部分的参数设置到BoundSql#additionalParameters中

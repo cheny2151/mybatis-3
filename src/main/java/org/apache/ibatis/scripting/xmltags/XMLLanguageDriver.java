@@ -65,15 +65,22 @@ public class XMLLanguageDriver implements LanguageDriver {
   public SqlSource createSqlSource(Configuration configuration, String script, Class<?> parameterType) {
     // issue #3
     if (script.startsWith("<script>")) {
+      // 以<script>为开头，则使用XML方式解析sql配置,允许出现<if/>等动态sql节点
       XPathParser parser = new XPathParser(script, false, configuration.getVariables(), new XMLMapperEntityResolver());
+      // 调用与xml中的<select/>等sql节点相同的解析方式进行解析
       return createSqlSource(configuration, parser.evalNode("/script"), parameterType);
     } else {
       // issue #127
+      // 不以<script>为开头，则不可以存在<if/>等动态sql节点
+      // 查找${}变量为全局参数的进行替换
       script = PropertyParser.parse(script, configuration.getVariables());
+      // 借助TextSqlNode判断是否为动态sql
       TextSqlNode textSqlNode = new TextSqlNode(script);
       if (textSqlNode.isDynamic()) {
+        // sql存在${}，为动态sql
         return new DynamicSqlSource(configuration, textSqlNode);
       } else {
+        // 无${}，为静态sql
         return new RawSqlSource(configuration, script, parameterType);
       }
     }

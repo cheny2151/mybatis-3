@@ -46,6 +46,7 @@ class OgnlMemberAccess implements MemberAccess {
   public Object setup(Map context, Object target, Member member, String propertyName) {
     Object result = null;
     if (isAccessible(context, target, member, propertyName)) {
+      // 有访问权限并且isAccessible返回false，则设置accessible为true
       AccessibleObject accessible = (AccessibleObject) member;
       if (!accessible.isAccessible()) {
         result = Boolean.FALSE;

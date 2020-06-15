@@ -18,6 +18,8 @@ package org.apache.ibatis.builder.annotation;
 import java.lang.reflect.Method;
 
 /**
+ * 用于缓存未完成注解解析的Mapper接口方法（维度为方法）
+ *
  * @author Eduardo Macarron
  */
 public class MethodResolver {
@@ -30,6 +32,7 @@ public class MethodResolver {
   }
 
   public void resolve() {
+    // 进行注解解析
     annotationBuilder.parseStatement(method);
   }
 

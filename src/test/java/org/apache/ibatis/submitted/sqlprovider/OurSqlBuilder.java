@@ -153,6 +153,7 @@ public class OurSqlBuilder {
   public String buildSelectByIdProviderContextOnly(ProviderContext context) {
     final boolean containsLogicalDelete = context.getMapperMethod().getAnnotation(BaseMapper.ContainsLogicalDelete.class) != null;
     final String tableName = context.getMapperType().getAnnotation(BaseMapper.Meta.class).tableName();
+    // mybatis提供的便于拼接sql的工具类SQL
     return new SQL(){{
       SELECT("*");
       FROM(tableName);

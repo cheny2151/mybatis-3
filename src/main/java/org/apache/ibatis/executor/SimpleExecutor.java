@@ -45,7 +45,9 @@ public class SimpleExecutor extends BaseExecutor {
     Statement stmt = null;
     try {
       Configuration configuration = ms.getConfiguration();
+      // 默认为PreparedStatementHandler
       StatementHandler handler = configuration.newStatementHandler(this, ms, parameter, RowBounds.DEFAULT, null, null);
+      // 获取Statement并设置好?占位对应的参数
       stmt = prepareStatement(handler, ms.getStatementLog());
       return handler.update(stmt);
     } finally {
@@ -55,13 +57,18 @@ public class SimpleExecutor extends BaseExecutor {
 
   @Override
   public <E> List<E> doQuery(MappedStatement ms, Object parameter, RowBounds rowBounds, ResultHandler resultHandler, BoundSql boundSql) throws SQLException {
+    // 注意：此处的stmt为jdbc的Statement
     Statement stmt = null;
     try {
       Configuration configuration = ms.getConfiguration();
+      // 默认为PreparedStatementHandler
       StatementHandler handler = configuration.newStatementHandler(wrapper, ms, parameter, rowBounds, resultHandler, boundSql);
+      // 获取Statement并设置好?占位对应的参数
       stmt = prepareStatement(handler, ms.getStatementLog());
+      // 执行查询并处理结果映射
       return handler.query(stmt, resultHandler);
     } finally {
+      // 最终关闭Statement
       closeStatement(stmt);
     }
   }
@@ -82,8 +89,11 @@ public class SimpleExecutor extends BaseExecutor {
 
   private Statement prepareStatement(StatementHandler handler, Log statementLog) throws SQLException {
     Statement stmt;
+    // 获取连接
     Connection connection = getConnection(statementLog);
+    // 从连接中获取Statement实例，并设置超时时间
     stmt = handler.prepare(connection, transaction.getTimeout());
+    // 为Statement设置参数，默认handler为PreparedStatementHandler（sql预编译）
     handler.parameterize(stmt);
     return stmt;
   }

@@ -21,6 +21,7 @@ import java.util.Map;
 import org.apache.ibatis.cache.decorators.TransactionalCache;
 
 /**
+ * 二级缓存Manager
  * @author Clinton Begin
  */
 public class TransactionalCacheManager {

@@ -40,8 +40,11 @@ public class DefaultParameterHandler implements ParameterHandler {
 
   private final TypeHandlerRegistry typeHandlerRegistry;
 
+  // 参数处理器将要处理的MappedStatement
   private final MappedStatement mappedStatement;
+  // 实际参数（已经执行完ParamNameResolver#getNamedParams与DefaultSqlSession#wrapCollection）
   private final Object parameterObject;
+  // SqlSource#getBoundSql 拼接sql结果
   private final BoundSql boundSql;
   private final Configuration configuration;
 
@@ -58,32 +61,45 @@ public class DefaultParameterHandler implements ParameterHandler {
     return parameterObject;
   }
 
+  /**
+   * 为PreparedStatement设置参数：
+   * 从ParameterMapping中获取参数名，参数值，TypeHandler，jdbcType
+   * -> 通过TypeHandler为PreparedStatement设置参数
+   */
   @Override
   public void setParameters(PreparedStatement ps) {
     ErrorContext.instance().activity("setting parameters").object(mappedStatement.getParameterMap().getId());
+    // 非<parameterMap/>的实体parameterMapping，是在执行sql过程中解析替换sql的#{}时候创建的（见SqlSourceBuilder#parse）
     List<ParameterMapping> parameterMappings = boundSql.getParameterMappings();
     if (parameterMappings != null) {
       for (int i = 0; i < parameterMappings.size(); i++) {
         ParameterMapping parameterMapping = parameterMappings.get(i);
+        // 默认mode为IN
         if (parameterMapping.getMode() != ParameterMode.OUT) {
           Object value;
           String propertyName = parameterMapping.getProperty();
           if (boundSql.hasAdditionalParameter(propertyName)) { // issue #448 ask first for additional params
+            // 内置参数（_parameter，foreach执行过程产生的参数等等）
             value = boundSql.getAdditionalParameter(propertyName);
           } else if (parameterObject == null) {
+            // 参数为null，赋值为null
             value = null;
           } else if (typeHandlerRegistry.hasTypeHandler(parameterObject.getClass())) {
+            // 参数不为null，存在对应的类型转换器，则直接赋值
             value = parameterObject;
           } else {
+            // 参数不为null，通过反射获取参数的propertyName属性值
             MetaObject metaObject = configuration.newMetaObject(parameterObject);
             value = metaObject.getValue(propertyName);
           }
           TypeHandler typeHandler = parameterMapping.getTypeHandler();
           JdbcType jdbcType = parameterMapping.getJdbcType();
           if (value == null && jdbcType == null) {
+            // 值或者jdbc类型为null时，jdbc类型默认为JdbcType.OTHER
             jdbcType = configuration.getJdbcTypeForNull();
           }
           try {
+            // 通过TypeHandler设置PreparedStatement的参数，jdbc为1开始所以位置是i + 1
             typeHandler.setParameter(ps, i + 1, value, jdbcType);
           } catch (TypeException | SQLException e) {
             throw new TypeException("Could not set parameters for mapping: " + parameterMapping + ". Cause: " + e, e);

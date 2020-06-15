@@ -15,6 +15,9 @@
  */
 package org.apache.ibatis.mapping;
 
+import org.apache.ibatis.binding.MapperMethod;
+import org.apache.ibatis.session.defaults.DefaultSqlSession;
+
 /**
  * Represents the content of a mapped statement read from an XML file or an annotation.
  * It creates the SQL that will be passed to the database out of the input parameter received from the user.
@@ -23,6 +26,13 @@ package org.apache.ibatis.mapping;
  */
 public interface SqlSource {
 
+  /**
+   *
+   * @param parameterObject Mapper接口方法实际入参 ->
+   *                        经过{@link MapperMethod.MethodSignature#convertArgsToSqlCommandParam(java.lang.Object[]))后 ->
+   *                        又经过{@link DefaultSqlSession#wrapCollection(java.lang.Object)}
+   * @return
+   */
   BoundSql getBoundSql(Object parameterObject);
 
 }

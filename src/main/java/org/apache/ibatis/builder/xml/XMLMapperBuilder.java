@@ -91,7 +91,7 @@ public class XMLMapperBuilder extends BaseBuilder {
    * 注意：一个XMLMapperBuilder实例对应一个Mapper.xml
    */
   public void parse() {
-    // 判断是否已加载该Mapper
+    // 判断是否已加载该Mapper，此处resource为Mapper.xml地址
     if (!configuration.isResourceLoaded(resource)) {
       // 解析Mapper.xml文件<mapper>节点的元素
       configurationElement(parser.evalNode("/mapper"));
@@ -100,8 +100,11 @@ public class XMLMapperBuilder extends BaseBuilder {
       bindMapperForNamespace();
     }
 
+    // 触发解析之前未能完成解析的resultMap
     parsePendingResultMaps();
+    // 触发解析之前未能完成解析的cacheRefs
     parsePendingCacheRefs();
+    // 触发解析之前未能完成解析的select、insert、update、delete节点
     parsePendingStatements();
   }
 
@@ -168,6 +171,10 @@ public class XMLMapperBuilder extends BaseBuilder {
     }
   }
 
+  /**
+   * 解析之前未能完成解析的resultMap
+   * configuration#incompleteResultMaps
+   */
   private void parsePendingResultMaps() {
     Collection<ResultMapResolver> incompleteResultMaps = configuration.getIncompleteResultMaps();
     synchronized (incompleteResultMaps) {
@@ -183,6 +190,10 @@ public class XMLMapperBuilder extends BaseBuilder {
     }
   }
 
+  /**
+   * 解析之前未能完成解析的cacheRefs
+   * configuration#incompleteCacheRefs
+   */
   private void parsePendingCacheRefs() {
     Collection<CacheRefResolver> incompleteCacheRefs = configuration.getIncompleteCacheRefs();
     synchronized (incompleteCacheRefs) {
@@ -198,6 +209,10 @@ public class XMLMapperBuilder extends BaseBuilder {
     }
   }
 
+  /**
+   * 解析之前未能完成解析的select、insert、update、delete节点
+   * configuration#incompleteStatements
+   */
   private void parsePendingStatements() {
     Collection<XMLStatementBuilder> incompleteStatements = configuration.getIncompleteStatements();
     synchronized (incompleteStatements) {
@@ -578,16 +593,22 @@ public class XMLMapperBuilder extends BaseBuilder {
     if (namespace != null) {
       Class<?> boundType = null;
       try {
+        // 获取Mapper的接口Class
         boundType = Resources.classForName(namespace);
       } catch (ClassNotFoundException e) {
         //ignore, bound type is not required
+        // 只存在Mapper.xml，但对应的Mapper接口不存在的时候，不会报错，
+        // 忽略不执行configuration#addMapper（但是已解析的MappedStatement已经添加到Configuration.mappedStatements中）
       }
       if (boundType != null) {
+        // 未注册到configuration则进行注册
         if (!configuration.hasMapper(boundType)) {
           // Spring may not know the real resource name so we set a flag
           // to prevent loading again this resource from the mapper interface
           // look at MapperAnnotationBuilder#loadXmlResource
+          // 无论通过Class加载，或者通过资源加载都会标识("namespace:"+namespace)
           configuration.addLoadedResource("namespace:" + namespace);
+          // 由于已经标识了("namespace:"+namespace),所以不会再创建XMLMapperBuilder（见MapperAnnotationBuilder#loadXmlResource）
           configuration.addMapper(boundType);
         }
       }
