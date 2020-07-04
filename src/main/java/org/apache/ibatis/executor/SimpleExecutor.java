@@ -42,15 +42,18 @@ public class SimpleExecutor extends BaseExecutor {
 
   @Override
   public int doUpdate(MappedStatement ms, Object parameter) throws SQLException {
+    // 注意：此处的stmt为jdbc的Statement
     Statement stmt = null;
     try {
       Configuration configuration = ms.getConfiguration();
-      // 默认为PreparedStatementHandler
+      // 返回RoutingStatementHandler，其delegate默认为PreparedStatementHandler
+      // ⭐注意insert/update/delete类型的sql传入的boundSql为null(select不为null)
       StatementHandler handler = configuration.newStatementHandler(this, ms, parameter, RowBounds.DEFAULT, null, null);
       // 获取Statement并设置好?占位对应的参数
       stmt = prepareStatement(handler, ms.getStatementLog());
       return handler.update(stmt);
     } finally {
+      // 最终关闭Statement
       closeStatement(stmt);
     }
   }
@@ -61,7 +64,7 @@ public class SimpleExecutor extends BaseExecutor {
     Statement stmt = null;
     try {
       Configuration configuration = ms.getConfiguration();
-      // 默认为PreparedStatementHandler
+      // 返回RoutingStatementHandler，其delegate默认为PreparedStatementHandler
       StatementHandler handler = configuration.newStatementHandler(wrapper, ms, parameter, rowBounds, resultHandler, boundSql);
       // 获取Statement并设置好?占位对应的参数
       stmt = prepareStatement(handler, ms.getStatementLog());
@@ -82,6 +85,9 @@ public class SimpleExecutor extends BaseExecutor {
     return handler.queryCursor(stmt);
   }
 
+  /**
+   * simple执行器无逻辑
+   */
   @Override
   public List<BatchResult> doFlushStatements(boolean isRollback) {
     return Collections.emptyList();

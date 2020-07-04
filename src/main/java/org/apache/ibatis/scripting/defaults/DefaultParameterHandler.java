@@ -78,6 +78,8 @@ public class DefaultParameterHandler implements ParameterHandler {
         if (parameterMapping.getMode() != ParameterMode.OUT) {
           Object value;
           String propertyName = parameterMapping.getProperty();
+          // value赋值优先级：内置参数（存在propertyName） => parameterObject为null =>
+          // parameterObject存在对应类型处理器 => 获取parameterObject.propertyName对应值
           if (boundSql.hasAdditionalParameter(propertyName)) { // issue #448 ask first for additional params
             // 内置参数（_parameter，foreach执行过程产生的参数等等）
             value = boundSql.getAdditionalParameter(propertyName);
@@ -85,7 +87,7 @@ public class DefaultParameterHandler implements ParameterHandler {
             // 参数为null，赋值为null
             value = null;
           } else if (typeHandlerRegistry.hasTypeHandler(parameterObject.getClass())) {
-            // 参数不为null，存在对应的类型转换器，则直接赋值
+            // 参数不为null，存在对应的类型处理器，则直接赋值（类型处理器会处理PreparedStatement设参数值）
             value = parameterObject;
           } else {
             // 参数不为null，通过反射获取参数的propertyName属性值

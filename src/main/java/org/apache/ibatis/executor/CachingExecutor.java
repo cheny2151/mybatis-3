@@ -55,6 +55,7 @@ public class CachingExecutor implements Executor {
   public void close(boolean forceRollback) {
     try {
       //issues #499, #524 and #573
+      // 回滚或提交二级缓存
       if (forceRollback) {
         tcm.rollback();
       } else {
@@ -72,10 +73,14 @@ public class CachingExecutor implements Executor {
 
   @Override
   public int update(MappedStatement ms, Object parameterObject) throws SQLException {
+    // 刷新缓存
     flushCacheIfRequired(ms);
     return delegate.update(ms, parameterObject);
   }
 
+  /**
+   * 与BaseExecutor无异
+   */
   @Override
   public <E> List<E> query(MappedStatement ms, Object parameterObject, RowBounds rowBounds, ResultHandler resultHandler) throws SQLException {
     BoundSql boundSql = ms.getBoundSql(parameterObject);
@@ -89,6 +94,9 @@ public class CachingExecutor implements Executor {
     return delegate.queryCursor(ms, parameter, rowBounds);
   }
 
+  /**
+   * 对delegate进行包装，提供二级缓存逻辑
+   */
   @Override
   public <E> List<E> query(MappedStatement ms, Object parameterObject, RowBounds rowBounds, ResultHandler resultHandler, CacheKey key, BoundSql boundSql)
       throws SQLException {
@@ -103,9 +111,9 @@ public class CachingExecutor implements Executor {
         @SuppressWarnings("unchecked")
         List<E> list = (List<E>) tcm.getObject(cache, key);
         if (list == null) {
-          // 缓存不存在则执行sql查询
+          // 缓存不存在则调用BaseExecutor#query执行sql查询
           list = delegate.query(ms, parameterObject, rowBounds, resultHandler, key, boundSql);
-          // 添加到缓存
+          // 添加到二级缓存
           tcm.putObject(cache, key, list); // issue #578 and #116
         }
         return list;
@@ -117,12 +125,15 @@ public class CachingExecutor implements Executor {
 
   @Override
   public List<BatchResult> flushStatements() throws SQLException {
+    // flushStatements直接调用被代理的原方法
     return delegate.flushStatements();
   }
 
   @Override
   public void commit(boolean required) throws SQLException {
+    // 先执行被代理原提交方法
     delegate.commit(required);
+    // 再提交二级缓存
     tcm.commit();
   }
 
@@ -132,6 +143,7 @@ public class CachingExecutor implements Executor {
       delegate.rollback(required);
     } finally {
       if (required) {
+        // 回滚二级缓存
         tcm.rollback();
       }
     }
@@ -167,6 +179,9 @@ public class CachingExecutor implements Executor {
     delegate.clearLocalCache();
   }
 
+  /**
+   * 清除二级缓存
+   */
   private void flushCacheIfRequired(MappedStatement ms) {
     Cache cache = ms.getCache();
     if (cache != null && ms.isFlushCacheRequired()) {

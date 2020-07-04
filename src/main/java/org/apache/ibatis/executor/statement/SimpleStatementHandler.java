@@ -47,6 +47,7 @@ public class SimpleStatementHandler extends BaseStatementHandler {
     Object parameterObject = boundSql.getParameterObject();
     KeyGenerator keyGenerator = mappedStatement.getKeyGenerator();
     int rows;
+    // 执行sql之后，再执行KeyGenerator#processAfter
     if (keyGenerator instanceof Jdbc3KeyGenerator) {
       statement.execute(sql, Statement.RETURN_GENERATED_KEYS);
       rows = statement.getUpdateCount();
@@ -56,6 +57,7 @@ public class SimpleStatementHandler extends BaseStatementHandler {
       rows = statement.getUpdateCount();
       keyGenerator.processAfter(executor, mappedStatement, statement, parameterObject);
     } else {
+      // 只执行sql
       statement.execute(sql);
       rows = statement.getUpdateCount();
     }
@@ -87,6 +89,7 @@ public class SimpleStatementHandler extends BaseStatementHandler {
 
   @Override
   protected Statement instantiateStatement(Connection connection) throws SQLException {
+    // 简单的获取Statement，相比预编译的PreparedStatement在创建时就传入sql，普通的Statement是在执行才传入sql
     if (mappedStatement.getResultSetType() == ResultSetType.DEFAULT) {
       return connection.createStatement();
     } else {

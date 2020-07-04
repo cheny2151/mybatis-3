@@ -77,14 +77,17 @@ public class MapWrapper extends BaseWrapper {
     if (prop.hasNext()) {
       MetaObject metaValue = metaObject.metaObjectForProperty(prop.getIndexedName());
       if (metaValue == SystemMetaObject.NULL_META_OBJECT) {
+        // Map不存在该值，则返回Object类型
         return Object.class;
       } else {
         return metaValue.getSetterType(prop.getChildren());
       }
     } else {
       if (map.get(name) != null) {
+        // Map存在该值，则返回该值实际类型
         return map.get(name).getClass();
       } else {
+        // Map不存在该值，则返回Object类型
         return Object.class;
       }
     }

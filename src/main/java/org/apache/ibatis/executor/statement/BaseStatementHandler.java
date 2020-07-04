@@ -44,10 +44,13 @@ public abstract class BaseStatementHandler implements StatementHandler {
   protected final ResultSetHandler resultSetHandler;
   protected final ParameterHandler parameterHandler;
 
+  // 调用创建此StatementHandler的sql处理器Executor
   protected final Executor executor;
+  // StatementHandler处理的MappedStatement
   protected final MappedStatement mappedStatement;
   protected final RowBounds rowBounds;
 
+  // StatementHandler对应的BoundSql
   protected BoundSql boundSql;
 
   protected BaseStatementHandler(Executor executor, MappedStatement mappedStatement, Object parameterObject, RowBounds rowBounds, ResultHandler resultHandler, BoundSql boundSql) {
@@ -59,7 +62,9 @@ public abstract class BaseStatementHandler implements StatementHandler {
     this.typeHandlerRegistry = configuration.getTypeHandlerRegistry();
     this.objectFactory = configuration.getObjectFactory();
 
+    // 只有insert/update/delete的boundSql为空
     if (boundSql == null) { // issue #435, get the key before calculating the statement
+      // 创建主键(执行KeyGenerator#processBefore)
       generateKeys(parameterObject);
       boundSql = mappedStatement.getBoundSql(parameterObject);
     }
@@ -68,6 +73,7 @@ public abstract class BaseStatementHandler implements StatementHandler {
 
     // 创建ParameterHandler（实现类为DefaultParameterHandler）
     this.parameterHandler = configuration.newParameterHandler(mappedStatement, parameterObject, boundSql);
+    // 创建ResultSetHandler（实现类为DefaultResultSetHandler）
     this.resultSetHandler = configuration.newResultSetHandler(executor, mappedStatement, rowBounds, parameterHandler, resultHandler, boundSql);
   }
 
@@ -86,7 +92,10 @@ public abstract class BaseStatementHandler implements StatementHandler {
     ErrorContext.instance().sql(boundSql.getSql());
     Statement statement = null;
     try {
-      // 返回实现的对应的Statement类型（默认为PreparedStatement，预编译sql）
+      // #instantiateStatement由子类实现，返回对应的Statement类型：
+      // 1.默认为PreparedStatementHandler，返回PreparedStatement，预编译sql；
+      // 2.CallableStatementHandler，返回CallableStatement；
+      // 3.SimpleStatementHandler,返回Statement。
       statement = instantiateStatement(connection);
       // 设置Statement超时时间
       setStatementTimeout(statement, transactionTimeout);
@@ -102,10 +111,15 @@ public abstract class BaseStatementHandler implements StatementHandler {
     }
   }
 
+  /**
+   * 创建Statement
+   * 由子类实现不同的Statement创建逻辑
+   */
   protected abstract Statement instantiateStatement(Connection connection) throws SQLException;
 
   protected void setStatementTimeout(Statement stmt, Integer transactionTimeout) throws SQLException {
     Integer queryTimeout = null;
+    // 优先级：mappedStatement.timeout -> configuration.defaultStatementTimeout
     if (mappedStatement.getTimeout() != null) {
       queryTimeout = mappedStatement.getTimeout();
     } else if (configuration.getDefaultStatementTimeout() != null) {
@@ -114,6 +128,7 @@ public abstract class BaseStatementHandler implements StatementHandler {
     if (queryTimeout != null) {
       stmt.setQueryTimeout(queryTimeout);
     }
+    // 若transactionTimeout更小，则会设置为超时时间为transactionTimeout
     StatementUtil.applyTransactionTimeout(stmt, queryTimeout, transactionTimeout);
   }
 
@@ -129,6 +144,9 @@ public abstract class BaseStatementHandler implements StatementHandler {
     }
   }
 
+  /**
+   * 关闭Statement
+   */
   protected void closeStatement(Statement statement) {
     try {
       if (statement != null) {
@@ -139,6 +157,9 @@ public abstract class BaseStatementHandler implements StatementHandler {
     }
   }
 
+  /**
+   * 创建主键，也就是执行KeyGenerator#processBefore
+   */
   protected void generateKeys(Object parameter) {
     KeyGenerator keyGenerator = mappedStatement.getKeyGenerator();
     ErrorContext.instance().store();

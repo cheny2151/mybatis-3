@@ -565,7 +565,7 @@ public class Configuration {
   }
 
   public StatementHandler newStatementHandler(Executor executor, MappedStatement mappedStatement, Object parameterObject, RowBounds rowBounds, ResultHandler resultHandler, BoundSql boundSql) {
-    // 默认使用PreparedStatement(预编译sql)，返回PreparedStatementHandler
+    // 返回RoutingStatementHandler，默认路由到PreparedStatementHandler，使用PreparedStatement(预编译sql)。
     StatementHandler statementHandler = new RoutingStatementHandler(executor, mappedStatement, parameterObject, rowBounds, resultHandler, boundSql);
     statementHandler = (StatementHandler) interceptorChain.pluginAll(statementHandler);
     return statementHandler;
@@ -576,6 +576,7 @@ public class Configuration {
   }
 
   public Executor newExecutor(Transaction transaction, ExecutorType executorType) {
+    // 入参executorType -> defaultExecutorType（默认为SIMPLE） -> ExecutorType.SIMPLE
     executorType = executorType == null ? defaultExecutorType : executorType;
     executorType = executorType == null ? ExecutorType.SIMPLE : executorType;
     Executor executor;
@@ -586,7 +587,9 @@ public class Configuration {
     } else {
       executor = new SimpleExecutor(this, transaction);
     }
+    // cacheEnabled默认为true
     if (cacheEnabled) {
+      // 装饰者，提供二级缓存
       executor = new CachingExecutor(executor);
     }
     executor = (Executor) interceptorChain.pluginAll(executor);

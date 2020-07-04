@@ -228,8 +228,8 @@ public final class TypeHandlerRegistry {
 
   /**
    * 从typeHandlerMap中获取javaType对应jdbcType的TypeHandler
-   * 1.javaType为ParamMap(1)，返回null。todo paramMap的作用
-   * 2.javaTpe为枚举，则尝试获取该枚举对应的TypeHandler，不存在则使用defaultEnumTypeHandler，并注册javaType与defaultEnumTypeHandler的映射
+   * 1.javaType为ParamMap(1)，返回null。（当Mapper接口存在多个有效参数包装为ParamMap）
+   * 2.javaType为枚举，则尝试获取该枚举对应的TypeHandler，不存在则使用defaultEnumTypeHandler，并注册javaType与defaultEnumTypeHandler的映射
    * 3.通过javaType获取到jdbcHandlerMap后:
    * |------->3.1.注册TypeHandler时，jdbcType不为null
    *    |--------->3.1.1.若入参jdbcType不为空(与注册一致)，则jdbcHandlerMap调用get(jdbcType)(2)刚好获取到注册时的TypeHandler(因为注册时，jdbcType为jdbcType)

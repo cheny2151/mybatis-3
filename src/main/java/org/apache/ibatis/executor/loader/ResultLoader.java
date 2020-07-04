@@ -78,6 +78,7 @@ public class ResultLoader {
       localExecutor = newExecutor();
     }
     try {
+      // 执行内嵌查询
       return localExecutor.query(mappedStatement, parameterObject, RowBounds.DEFAULT, Executor.NO_RESULT_HANDLER, cacheKey, boundSql);
     } finally {
       if (localExecutor != executor) {

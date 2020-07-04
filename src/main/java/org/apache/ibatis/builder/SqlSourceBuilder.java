@@ -39,6 +39,13 @@ public class SqlSourceBuilder extends BaseBuilder {
     super(configuration);
   }
 
+  /**
+   * 解析sql将#{}内容映射为一个ParameterMapping，并将#{}替换为?
+   *
+   * @param originalSql          静态sql
+   * @param parameterType        Mapper接口入参(经过#convertArgsToSqlCommandParam与#wrapCollection)通过#getClass获得的类型
+   * @param additionalParameters 额外添加的参数
+   */
   public SqlSource parse(String originalSql, Class<?> parameterType, Map<String, Object> additionalParameters) {
     ParameterMappingTokenHandler handler = new ParameterMappingTokenHandler(configuration, parameterType, additionalParameters);
     GenericTokenParser parser = new GenericTokenParser("#{", "}", handler);
@@ -53,8 +60,11 @@ public class SqlSourceBuilder extends BaseBuilder {
    */
   private static class ParameterMappingTokenHandler extends BaseBuilder implements TokenHandler {
 
+    // #{}映射结果
     private List<ParameterMapping> parameterMappings = new ArrayList<>();
+    // Mapper接口入参(经过#convertArgsToSqlCommandParam与#wrapCollection)通过#getClass获得的类型
     private Class<?> parameterType;
+    // 额外参数additionalParameters的MetaObject
     private MetaObject metaParameters;
 
     public ParameterMappingTokenHandler(Configuration configuration, Class<?> parameterType, Map<String, Object> additionalParameters) {
@@ -67,6 +77,9 @@ public class SqlSourceBuilder extends BaseBuilder {
       return parameterMappings;
     }
 
+    /**
+     * 发现#{}时的执行的回调，替换解析#{}为ParameterMapping并替换为?
+     */
     @Override
     public String handleToken(String content) {
       parameterMappings.add(buildParameterMapping(content));
@@ -86,19 +99,21 @@ public class SqlSourceBuilder extends BaseBuilder {
       // 从解析结果中获取property
       String property = propertiesMap.get("property");
       Class<?> propertyType;
-      // 获取属性类型
+      // 获取属性类型获取优先级：额外参数 => 存在对应的typeHandlerRegistry => 游标CURSOR => null||Map => java实体
       if (metaParameters.hasGetter(property)) { // issue #448 get type from additional params
-        // 获取额外参数additional的类型，（metaParameters为额外参数additional）
+        // 额外参数中获取类型（metaParameters为额外参数additional）
         propertyType = metaParameters.getGetterType(property);
       } else if (typeHandlerRegistry.hasTypeHandler(parameterType)) {
-        // 基本类型
+        // 存在对应的typeHandlerRegistry（基本上为基本类型），直接返回此类型
         propertyType = parameterType;
       } else if (JdbcType.CURSOR.name().equals(propertiesMap.get("jdbcType"))) {
+        // 游标
         propertyType = java.sql.ResultSet.class;
       } else if (property == null || Map.class.isAssignableFrom(parameterType)) {
+        // null||Map，设置为Object（只知道为Map，无法判断property对应值类型）
         propertyType = Object.class;
       } else {
-        // 通过parameterType获取属性类型（MetaClass）
+        // java实体，通过parameterType获取属性类型（MetaClass）
         MetaClass metaClass = MetaClass.forClass(parameterType, configuration.getReflectorFactory());
         if (metaClass.hasGetter(property)) {
           propertyType = metaClass.getGetterType(property);
@@ -106,7 +121,8 @@ public class SqlSourceBuilder extends BaseBuilder {
           propertyType = Object.class;
         }
       }
-      // 根据propertiesMap实例化成ParameterMapping对象
+      // 根据propertiesMap（即#{}中表达式的解析结果键值对）实例化成ParameterMapping对象
+      // 注意此处构建Builder时，已经通过构造函数将javaType设置为propertyType
       ParameterMapping.Builder builder = new ParameterMapping.Builder(configuration, property, propertyType);
       Class<?> javaType = propertyType;
       String typeHandlerAlias = null;
@@ -114,6 +130,7 @@ public class SqlSourceBuilder extends BaseBuilder {
         String name = entry.getKey();
         String value = entry.getValue();
         if ("javaType".equals(name)) {
+          // 覆盖propertyType
           javaType = resolveClass(value);
           builder.javaType(javaType);
         } else if ("jdbcType".equals(name)) {
@@ -132,13 +149,14 @@ public class SqlSourceBuilder extends BaseBuilder {
           // Do Nothing
           // 构造Builder的时候已经传入该property
         } else if ("expression".equals(name)) {
-          // 不支持表达式
+          // #{}不支持表达式（${}才支持）
           throw new BuilderException("Expression based parameters are not supported yet");
         } else {
           throw new BuilderException("An invalid property '" + name + "' was found in mapping #{" + content + "}.  Valid properties are " + PARAMETER_PROPERTIES);
         }
       }
       if (typeHandlerAlias != null) {
+        // 当#{}中有声明typeHandler属性
         builder.typeHandler(resolveTypeHandler(javaType, typeHandlerAlias));
       }
       // 生成ParameterMapping

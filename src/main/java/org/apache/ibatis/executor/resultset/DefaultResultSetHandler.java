@@ -478,7 +478,7 @@ public class DefaultResultSetHandler implements ResultSetHandler {
           // 常规逻辑，column不为null并且存在于映射集合
           || (column != null && mappedColumnNames.contains(column.toUpperCase(Locale.ENGLISH)))
           || propertyMapping.getResultSet() != null) {
-        // 从resultSet中获取列值
+        // 从resultSet中获取propertyMapping对应的列值
         Object value = getPropertyMappingValue(rsw.getResultSet(), metaObject, propertyMapping, lazyLoader, columnPrefix);
         // issue #541 make property optional
         final String property = propertyMapping.getProperty();
@@ -502,17 +502,18 @@ public class DefaultResultSetHandler implements ResultSetHandler {
   }
 
   /**
-   * 从ResultSet中获取property类型的ResultMapping对应列的值
+   * 从ResultSet中获取ResultMapping.column对应列的值
    */
   private Object getPropertyMappingValue(ResultSet rs, MetaObject metaResultObject, ResultMapping propertyMapping, ResultLoaderMap lazyLoader, String columnPrefix)
       throws SQLException {
     if (propertyMapping.getNestedQueryId() != null) {
+      // 存在内嵌select属性
       return getNestedQueryMappingValue(rs, metaResultObject, propertyMapping, lazyLoader, columnPrefix);
     } else if (propertyMapping.getResultSet() != null) {
       addPendingChildRelation(rs, metaResultObject, propertyMapping);   // TODO is that OK?
       return DEFERRED;
     } else {
-      // 常规逻辑，直接从ResultSet中获取并转换该列值
+      // 常规逻辑，根据propertyMapping.column从ResultSet中获取并转换该列值
       final TypeHandler<?> typeHandler = propertyMapping.getTypeHandler();
       final String column = prependPrefix(propertyMapping.getColumn(), columnPrefix);
       return typeHandler.getResult(rs, column);
@@ -802,6 +803,9 @@ public class DefaultResultSetHandler implements ResultSetHandler {
     return value;
   }
 
+  /**
+   * 执行内嵌select
+   */
   private Object getNestedQueryMappingValue(ResultSet rs, MetaObject metaResultObject, ResultMapping propertyMapping, ResultLoaderMap lazyLoader, String columnPrefix)
       throws SQLException {
     final String nestedQueryId = propertyMapping.getNestedQueryId();
@@ -820,9 +824,11 @@ public class DefaultResultSetHandler implements ResultSetHandler {
       } else {
         final ResultLoader resultLoader = new ResultLoader(configuration, executor, nestedQuery, nestedQueryParameterObject, targetType, key, nestedBoundSql);
         if (propertyMapping.isLazy()) {
+          // 添加到延迟加载Map
           lazyLoader.addLoader(property, metaResultObject, resultLoader);
           value = DEFERRED;
         } else {
+          // 查询内嵌select结果
           value = resultLoader.loadResult();
         }
       }
@@ -975,6 +981,7 @@ public class DefaultResultSetHandler implements ResultSetHandler {
     // partialObject为之前rowKey与此相同的记录所生成的rowValue，空时则为第一次生成此rowKey值
     Object rowValue = partialObject;
     if (rowValue != null) {
+      /*-------------------------------- 关联旧值 -----------------------------*/
       // 当前记录当前层级的rowKey（combinedKey）已经存在，换句话说对于此层级与此前的rowValue映射为同个实例
       // 也就是平时使用mybatis的<collection/>映射一对多时，反映多条记录映射到同一个实例A（A也就是一对多中的'一'），
       // 而其子层存在不同记录值，则会映射到A对应的成员变量集合B（B也就是一对多中的'多'），最终为A:{B:[],...}
@@ -984,6 +991,7 @@ public class DefaultResultSetHandler implements ResultSetHandler {
       applyNestedResultMappings(rsw, resultMap, metaObject, columnPrefix, combinedKey, false);
       ancestorObjects.remove(resultMapId);
     } else {
+      /*-------------------------------- 创建新值 -----------------------------*/
       // 当前记录当前层级的rowKey（combinedKey）为新值，创建新的rowValue实例
       final ResultLoaderMap lazyLoader = new ResultLoaderMap();
       rowValue = createResultObject(rsw, resultMap, lazyLoader, columnPrefix);
@@ -992,12 +1000,13 @@ public class DefaultResultSetHandler implements ResultSetHandler {
         boolean foundValues = this.useConstructorMappings;
         // 判断是否自动映射，存在内嵌resultMap时默认配置是不会执行自动映射
         if (shouldApplyAutomaticMappings(resultMap, true)) {
+          // 应用自动映射(处理同一层级)
           foundValues = applyAutomaticMappings(rsw, resultMap, metaObject, columnPrefix) || foundValues;
         }
-        // 处理resultMap中的<result/>,<id/>
+        // 处理resultMap中的<result/>,<id/>(处理同一层级)
         foundValues = applyPropertyMappings(rsw, resultMap, metaObject, lazyLoader, columnPrefix) || foundValues;
         putAncestor(rowValue, resultMapId);
-        // 处理resultMap中的<collection/>、<association/>
+        // 处理resultMap中的<collection/>、<association/>(处理下一层级)
         foundValues = applyNestedResultMappings(rsw, resultMap, metaObject, columnPrefix, combinedKey, true) || foundValues;
         ancestorObjects.remove(resultMapId);
         foundValues = lazyLoader.size() > 0 || foundValues;

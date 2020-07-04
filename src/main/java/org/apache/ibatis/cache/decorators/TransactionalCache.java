@@ -33,6 +33,8 @@ import org.apache.ibatis.logging.LogFactory;
  * Blocking cache support has been added. Therefore any get() that returns a cache miss
  * will be followed by a put() so any lock associated with the key can be released.
  *
+ * 提供二级缓存支持，对MappedStatement对应的Cache实例进行包装增强
+ *
  * @author Clinton Begin
  * @author Eduardo Macarron
  */
@@ -40,9 +42,12 @@ public class TransactionalCache implements Cache {
 
   private static final Log log = LogFactory.getLog(TransactionalCache.class);
 
+  // 此处为MappedStatement对应的缓存实例
   private final Cache delegate;
   private boolean clearOnCommit;
+  // 待事务commit的缓存列表
   private final Map<Object, Object> entriesToAddOnCommit;
+  // 未缓存查询结果的key列表
   private final Set<Object> entriesMissedInCache;
 
   public TransactionalCache(Cache delegate) {
@@ -100,8 +105,10 @@ public class TransactionalCache implements Cache {
 
   public void commit() {
     if (clearOnCommit) {
+      // 清除所有缓存
       delegate.clear();
     }
+    // 将待事务commit的缓存列表刷入缓存实体
     flushPendingEntries();
     reset();
   }
@@ -119,6 +126,7 @@ public class TransactionalCache implements Cache {
 
   private void flushPendingEntries() {
     for (Map.Entry<Object, Object> entry : entriesToAddOnCommit.entrySet()) {
+      // 将待提交的缓存列表刷入缓存实体
       delegate.putObject(entry.getKey(), entry.getValue());
     }
     for (Object entry : entriesMissedInCache) {

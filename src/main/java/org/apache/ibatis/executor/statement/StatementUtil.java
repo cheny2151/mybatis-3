@@ -45,6 +45,7 @@ public class StatementUtil {
       return;
     }
     Integer timeToLiveOfQuery = null;
+    // 当queryTimeout为空/0，或者transactionTimeout更小时，应用transactionTimeout
     if (queryTimeout == null || queryTimeout == 0) {
       timeToLiveOfQuery = transactionTimeout;
     } else if (transactionTimeout < queryTimeout) {

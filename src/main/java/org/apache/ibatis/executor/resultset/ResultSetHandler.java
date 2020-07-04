@@ -27,10 +27,19 @@ import org.apache.ibatis.cursor.Cursor;
  */
 public interface ResultSetHandler {
 
+  /**
+   * ⭐处理ResultSets结果映射
+   */
   <E> List<E> handleResultSets(Statement stmt) throws SQLException;
 
+  /**
+   * 处理游标ResultSets结果映射
+   */
   <E> Cursor<E> handleCursorResultSets(Statement stmt) throws SQLException;
 
+  /**
+   * 处理存储过程
+   */
   void handleOutputParameters(CallableStatement cs) throws SQLException;
 
 }

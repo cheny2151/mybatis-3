@@ -40,6 +40,16 @@ public class DynamicSqlSource implements SqlSource {
   }
 
   /**
+   * 主要过程：
+   * rootSqlNode：含${}与<if/>等标签的动态sql（也包含#{}）
+   * => SqlNode#apply：依据入参parameterObject解析动态内容，${}内容由OGNL表达式解析
+   * => SqlSourceBuilder#parse：解析#{}，替换为?占位符并生成ParameterMapping，返回StaticSqlSource
+   * => StaticSqlSource#getBoundSql: 生成一个BoundSql
+   * => 返回BoundSql
+   *
+   * 注意：
+   * 对于${},是在此处执行TextSqlNode#apply时，通过OGNL表达式解析器解析获取值;
+   * 对于#{}，是在执行sql时，通过反射获取对应的属性值。
    *
    * @param parameterObject Mapper接口方法实际入参 ->
    *                        经过{@link MapperMethod.MethodSignature#convertArgsToSqlCommandParam(java.lang.Object[]))后 ->
@@ -48,11 +58,11 @@ public class DynamicSqlSource implements SqlSource {
    */
   @Override
   public BoundSql getBoundSql(Object parameterObject) {
-    // parameterObject为Mapper接口原始参数
+    // parameterObject为Mapper接口入参(原始Mapper接口入参经过#convertArgsToSqlCommandParam与#wrapCollection)
     // 创建DynamicContext，用于存放sql拼接
     DynamicContext context = new DynamicContext(configuration, parameterObject);
     /* 从根节点开始调用#apply()，最终将根据绑定值解析动态sql节点拼接成静态sql存放于context#sqlBuilder成员变量，
-       既执行完#apply()后，<if/>等动态节点与#{}都填充解析完毕，除了sql就只剩#{} */
+       既执行完#apply()后，<if/>等动态节点与${}都填充解析完毕，除了sql就只剩#{} */
     rootSqlNode.apply(context);
     SqlSourceBuilder sqlSourceParser = new SqlSourceBuilder(configuration);
     Class<?> parameterType = parameterObject == null ? Object.class : parameterObject.getClass();

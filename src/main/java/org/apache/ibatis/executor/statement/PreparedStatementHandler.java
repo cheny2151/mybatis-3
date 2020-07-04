@@ -43,18 +43,23 @@ public class PreparedStatementHandler extends BaseStatementHandler {
 
   @Override
   public int update(Statement statement) throws SQLException {
+    // PreparedStatement类型(存在?占位)的Statement已经设置完sql与参数
     PreparedStatement ps = (PreparedStatement) statement;
+    // 执行sql
     ps.execute();
     int rows = ps.getUpdateCount();
     Object parameterObject = boundSql.getParameterObject();
     KeyGenerator keyGenerator = mappedStatement.getKeyGenerator();
+    // 执行回写key方法（KeyGenerator#processAfter）
     keyGenerator.processAfter(executor, mappedStatement, ps, parameterObject);
+    // 返回sql影响条数
     return rows;
   }
 
   @Override
   public void batch(Statement statement) throws SQLException {
     PreparedStatement ps = (PreparedStatement) statement;
+    // 执行批量sql
     ps.addBatch();
   }
 
@@ -62,6 +67,7 @@ public class PreparedStatementHandler extends BaseStatementHandler {
   public <E> List<E> query(Statement statement, ResultHandler resultHandler) throws SQLException {
     // PreparedStatement类型(存在?占位)的Statement已经设置完sql与参数
     PreparedStatement ps = (PreparedStatement) statement;
+    // 执行sql
     ps.execute();
     // 交由DefaultResultSetHandler处理结果映射
     return resultSetHandler.handleResultSets(ps);
@@ -74,14 +80,20 @@ public class PreparedStatementHandler extends BaseStatementHandler {
     return resultSetHandler.handleCursorResultSets(ps);
   }
 
+  /**
+   * 主要是通过connect获取PrepareStatement
+   */
   @Override
   protected Statement instantiateStatement(Connection connection) throws SQLException {
     String sql = boundSql.getSql();
+    // 创建
     if (mappedStatement.getKeyGenerator() instanceof Jdbc3KeyGenerator) {
       String[] keyColumnNames = mappedStatement.getKeyColumns();
       if (keyColumnNames == null) {
+        // key column未声明，使用RETURN_GENERATED_KEYS
         return connection.prepareStatement(sql, PreparedStatement.RETURN_GENERATED_KEYS);
       } else {
+        // 使用声明的key column
         return connection.prepareStatement(sql, keyColumnNames);
       }
     } else if (mappedStatement.getResultSetType() == ResultSetType.DEFAULT) {
@@ -93,6 +105,9 @@ public class PreparedStatementHandler extends BaseStatementHandler {
     }
   }
 
+  /**
+   * 设置PreparedStatement的参数
+   */
   @Override
   public void parameterize(Statement statement) throws SQLException {
     // 通过DefaultParameterHandler设置PreparedStatement的参数，parameterHandler在初始化PreparedStatementHandler时候创建

@@ -31,6 +31,7 @@ public final class LogFactory {
   private static Constructor<? extends Log> logConstructor;
 
   static {
+    // 尝试所有日志实现类的设置
     tryImplementation(LogFactory::useSlf4jLogging);
     tryImplementation(LogFactory::useCommonsLogging);
     tryImplementation(LogFactory::useLog4J2Logging);
@@ -88,6 +89,7 @@ public final class LogFactory {
   }
 
   private static void tryImplementation(Runnable runnable) {
+    // 只要设置成功就不再尝试
     if (logConstructor == null) {
       try {
         runnable.run();
@@ -97,6 +99,11 @@ public final class LogFactory {
     }
   }
 
+  /**
+   * 设置日志实现类
+   *
+   * @param implClass 日志实现类型
+   */
   private static void setImplementation(Class<? extends Log> implClass) {
     try {
       Constructor<? extends Log> candidate = implClass.getConstructor(String.class);

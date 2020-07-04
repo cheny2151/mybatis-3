@@ -21,6 +21,7 @@ import java.util.List;
 import org.apache.ibatis.mapping.MappedStatement;
 
 /**
+ * 存放批量执行过程的sql与参数
  * @author Jeff Butler
  */
 public class BatchResult {

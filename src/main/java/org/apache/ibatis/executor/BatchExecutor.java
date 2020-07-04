@@ -36,6 +36,14 @@ import org.apache.ibatis.session.RowBounds;
 import org.apache.ibatis.transaction.Transaction;
 
 /**
+ * 用于调用JDBC的Statement执行batch命令
+ * Statement#addBatch:添加命令
+ * Statement#executeBatch:批量执行命令列表
+ *
+ * 原生jdbc的用法：
+ * 对于PreparedStatement
+ * 每设置完一次参数，然后调用addBatch，就多一条命令（相同sql不同参数）
+ * 最后调用executeBatch执行所有命令
  * @author Jeff Butler
  */
 public class BatchExecutor extends BaseExecutor {
@@ -59,21 +67,28 @@ public class BatchExecutor extends BaseExecutor {
     final String sql = boundSql.getSql();
     final Statement stmt;
     if (sql.equals(currentSql) && ms.equals(currentStatement)) {
+      // 此sql、MappedStatement与上一个一致，则复用上一个Statement
       int last = statementList.size() - 1;
       stmt = statementList.get(last);
       applyTransactionTimeout(stmt);
+      // 设置?占位符对应的参数
       handler.parameterize(stmt);//fix Issues 322
       BatchResult batchResult = batchResultList.get(last);
       batchResult.addParameterObject(parameterObject);
     } else {
       Connection connection = getConnection(ms.getStatementLog());
       stmt = handler.prepare(connection, transaction.getTimeout());
+      // 设置?占位符对应的参数
       handler.parameterize(stmt);    //fix Issues 322
+      // 将当前属性设置为新的MappedStatement与其对应的sql
       currentSql = sql;
       currentStatement = ms;
+      // 添加到Statement列表
       statementList.add(stmt);
+      // 一个Statement对应一个BatchResult
       batchResultList.add(new BatchResult(ms, sql, parameterObject));
     }
+    // 执行Statement#addBatch
     handler.batch(stmt);
     return BATCH_UPDATE_RETURN_VALUE;
   }
@@ -83,6 +98,7 @@ public class BatchExecutor extends BaseExecutor {
       throws SQLException {
     Statement stmt = null;
     try {
+      // batch命令列表里不允许存在select命令，所以要执行掉之前的所有命令列表
       flushStatements();
       Configuration configuration = ms.getConfiguration();
       StatementHandler handler = configuration.newStatementHandler(wrapper, ms, parameterObject, rowBounds, resultHandler, boundSql);
@@ -112,17 +128,21 @@ public class BatchExecutor extends BaseExecutor {
     try {
       List<BatchResult> results = new ArrayList<>();
       if (isRollback) {
+        // 回滚不执行批量命令（#executeBatch）
         return Collections.emptyList();
       }
+      // 循环每一个Statement并执行批量命令(#executeBatch)
       for (int i = 0, n = statementList.size(); i < n; i++) {
         Statement stmt = statementList.get(i);
         applyTransactionTimeout(stmt);
         BatchResult batchResult = batchResultList.get(i);
         try {
+          // 执行批量命令
           batchResult.setUpdateCounts(stmt.executeBatch());
           MappedStatement ms = batchResult.getMappedStatement();
           List<Object> parameterObjects = batchResult.getParameterObjects();
           KeyGenerator keyGenerator = ms.getKeyGenerator();
+          // 之前存放到BatchResult的参数parameterObjects，用于设置insert生成的主键
           if (Jdbc3KeyGenerator.class.equals(keyGenerator.getClass())) {
             Jdbc3KeyGenerator jdbc3KeyGenerator = (Jdbc3KeyGenerator) keyGenerator;
             jdbc3KeyGenerator.processBatch(ms, stmt, parameterObjects);
@@ -151,6 +171,7 @@ public class BatchExecutor extends BaseExecutor {
       }
       return results;
     } finally {
+      // 最终清空所有属性
       for (Statement stmt : statementList) {
         closeStatement(stmt);
       }

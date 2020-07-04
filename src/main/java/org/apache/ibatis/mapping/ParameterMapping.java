@@ -23,6 +23,7 @@ import org.apache.ibatis.type.TypeHandler;
 import org.apache.ibatis.type.TypeHandlerRegistry;
 
 /**
+ * ParameterMapping对应#{}内容实体，用于获取sql?占位符对应的入参值
  * @author Clinton Begin
  */
 public class ParameterMapping {
@@ -113,6 +114,7 @@ public class ParameterMapping {
               + "Parameters of type java.sql.ResultSet require a resultmap.");
         }
       } else {
+        // typeHandler不允许为空
         if (parameterMapping.typeHandler == null) {
           throw new IllegalStateException("Type handler was null on parameter mapping for property '"
             + parameterMapping.property + "'. It was either not specified and/or could not be found for the javaType ("
@@ -122,9 +124,11 @@ public class ParameterMapping {
     }
 
     private void resolveTypeHandler() {
+      // ⭐当#{}中无声明typeHandler属性时typeHandler为null，typeHandler通过此处设置
       if (parameterMapping.typeHandler == null && parameterMapping.javaType != null) {
         Configuration configuration = parameterMapping.configuration;
         TypeHandlerRegistry typeHandlerRegistry = configuration.getTypeHandlerRegistry();
+        // 通过typeHandlerRegistry获取javaType对应的TypeHandler
         parameterMapping.typeHandler = typeHandlerRegistry.getTypeHandler(parameterMapping.javaType, parameterMapping.jdbcType);
       }
     }

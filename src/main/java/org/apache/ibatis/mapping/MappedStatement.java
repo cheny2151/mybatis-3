@@ -306,6 +306,7 @@ public final class MappedStatement {
     }
 
     // check for nested result maps in parameter mappings (issue #30)
+    // 查询Parameter Mapping中是否存在ResultMap(一般情况都不会用到)
     for (ParameterMapping pm : boundSql.getParameterMappings()) {
       String rmId = pm.getResultMapId();
       if (rmId != null) {

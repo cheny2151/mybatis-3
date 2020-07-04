@@ -34,6 +34,7 @@ import org.apache.ibatis.session.RowBounds;
 import org.apache.ibatis.transaction.Transaction;
 
 /**
+ * 相比SimpleExecutor，多了对Statement的缓存(缓存的key为sql)
  * @author Clinton Begin
  */
 public class ReuseExecutor extends BaseExecutor {
@@ -44,6 +45,9 @@ public class ReuseExecutor extends BaseExecutor {
     super(configuration, transaction);
   }
 
+  /**
+   * 相比{@link SimpleExecutor#doUpdate}少了最终关闭Statement
+   */
   @Override
   public int doUpdate(MappedStatement ms, Object parameter) throws SQLException {
     Configuration configuration = ms.getConfiguration();
@@ -52,6 +56,9 @@ public class ReuseExecutor extends BaseExecutor {
     return handler.update(stmt);
   }
 
+  /**
+   * 相比{@link SimpleExecutor#doQuery}少了最终关闭Statement
+   */
   @Override
   public <E> List<E> doQuery(MappedStatement ms, Object parameter, RowBounds rowBounds, ResultHandler resultHandler, BoundSql boundSql) throws SQLException {
     Configuration configuration = ms.getConfiguration();
@@ -81,12 +88,15 @@ public class ReuseExecutor extends BaseExecutor {
     Statement stmt;
     BoundSql boundSql = handler.getBoundSql();
     String sql = boundSql.getSql();
+    // 依据sql判断是否存在未关闭的Statement缓存
     if (hasStatementFor(sql)) {
       stmt = getStatement(sql);
       applyTransactionTimeout(stmt);
     } else {
+      // 缓存不存在，重新从Connection中获取Statement(获取Statement逻辑与SimpleExecutor一致)
       Connection connection = getConnection(statementLog);
       stmt = handler.prepare(connection, transaction.getTimeout());
+      // 缓存Statement
       putStatement(sql, stmt);
     }
     handler.parameterize(stmt);

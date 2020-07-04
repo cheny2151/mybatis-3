@@ -26,6 +26,7 @@ import org.apache.ibatis.cache.decorators.TransactionalCache;
  */
 public class TransactionalCacheManager {
 
+  // key为MappedStatement对应的缓存实例，value为二级缓存实例
   private final Map<Cache, TransactionalCache> transactionalCaches = new HashMap<>();
 
   public void clear(Cache cache) {
@@ -33,20 +34,24 @@ public class TransactionalCacheManager {
   }
 
   public Object getObject(Cache cache, CacheKey key) {
+    // 通过Cache换取TransactionalCache->从二级缓存中获取值
     return getTransactionalCache(cache).getObject(key);
   }
 
   public void putObject(Cache cache, CacheKey key, Object value) {
+    // 通过Cache换取TransactionalCache->将结果储存到二级缓存待commit列表中
     getTransactionalCache(cache).putObject(key, value);
   }
 
   public void commit() {
+    // 提交所有二级缓存
     for (TransactionalCache txCache : transactionalCaches.values()) {
       txCache.commit();
     }
   }
 
   public void rollback() {
+    // 回滚所有二级缓存
     for (TransactionalCache txCache : transactionalCaches.values()) {
       txCache.rollback();
     }
