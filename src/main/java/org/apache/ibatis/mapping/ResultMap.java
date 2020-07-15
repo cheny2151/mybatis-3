@@ -43,7 +43,9 @@ public class ResultMap {
   private Class<?> type;
   private List<ResultMapping> resultMappings;
   private List<ResultMapping> idResultMappings;
+  // 构造函数的resultMapping
   private List<ResultMapping> constructorResultMappings;
+  // 成员变量的resultMapping（除了构造<constructor/>外都是）
   private List<ResultMapping> propertyResultMappings;
   private Set<String> mappedColumns;
   private Set<String> mappedProperties;

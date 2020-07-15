@@ -437,7 +437,7 @@ public class MapperBuilderAssistant extends BaseBuilder {
     Class<?> javaTypeClass = resolveResultJavaType(resultType, property, javaType);
     // 调用BaseBuilder的方法，解析并获取TypeHandler实例
     TypeHandler<?> typeHandlerInstance = resolveTypeHandler(javaTypeClass, typeHandler);
-    // todo 嵌套 Select 查询时候使用
+    // 复合结果映射（即为ResultMapping嵌套ResultMappings）
     List<ResultMapping> composites = parseCompositeColumnName(column);
     return new ResultMapping.Builder(configuration, property, column, javaTypeClass)
         .jdbcType(jdbcType)
@@ -473,6 +473,7 @@ public class MapperBuilderAssistant extends BaseBuilder {
   private List<ResultMapping> parseCompositeColumnName(String columnName) {
     List<ResultMapping> composites = new ArrayList<>();
     if (columnName != null && (columnName.indexOf('=') > -1 || columnName.indexOf(',') > -1)) {
+      // 此处解析的内容例子：{id=id},以"{"和"}"和"="为分隔符
       StringTokenizer parser = new StringTokenizer(columnName, "{}=, ", false);
       while (parser.hasMoreTokens()) {
         String property = parser.nextToken();

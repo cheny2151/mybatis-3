@@ -98,6 +98,13 @@ public class JavassistProxyFactory implements org.apache.ibatis.executor.loader.
     return enhanced;
   }
 
+  public static void main(String[] args) {
+
+  }
+
+  /**
+   * 实现javassist的MethodHandler方法，代理实现懒加载执行加载的逻辑
+   */
   private static class EnhancedResultObjectProxyImpl implements MethodHandler {
 
     private final Class<?> type;
@@ -147,11 +154,14 @@ public class JavassistProxyFactory implements org.apache.ibatis.executor.loader.
           } else {
             if (lazyLoader.size() > 0 && !FINALIZE_METHOD.equals(methodName)) {
               if (aggressive || lazyLoadTriggerMethods.contains(methodName)) {
+                // 执行"equals", "clone", "hashCode", "toString"方法，则所有懒加载需立刻加载
                 lazyLoader.loadAll();
               } else if (PropertyNamer.isSetter(methodName)) {
+                // 执行了set方法，则移除掉延迟加载集合中对应property的懒加载对象。
                 final String property = PropertyNamer.methodToProperty(methodName);
                 lazyLoader.remove(property);
               } else if (PropertyNamer.isGetter(methodName)) {
+                // 执行了get方法，则需要加载延迟加载集合中对应property的懒加载对象。
                 final String property = PropertyNamer.methodToProperty(methodName);
                 if (lazyLoader.hasLoader(property)) {
                   lazyLoader.load(property);

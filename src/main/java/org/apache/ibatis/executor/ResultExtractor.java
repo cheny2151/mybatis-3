@@ -34,13 +34,24 @@ public class ResultExtractor {
     this.objectFactory = objectFactory;
   }
 
+  /**
+   * 尝试提取list为targetType类型：
+   * 1.targetType为List：直接返回入参list；
+   * 2.targetType为其他Collection子类：通过objectFactory创建Collection；
+   * 3.targetType为数组：构建Array并复制值；
+   * 4.否则list只能存在一个值，返回该值。
+   *
+   * @param list       Executor执行结果
+   * @param targetType 集合或数组类型
+   * @return
+   */
   public Object extractObjectFromList(List<Object> list, Class<?> targetType) {
     Object value = null;
     if (targetType != null && targetType.isAssignableFrom(list.getClass())) {
       // targetType为List或List的父类
       value = list;
     } else if (targetType != null && objectFactory.isCollection(targetType)) {
-      // targetType为Collection或Collection子类
+      // targetType为Collection或其他Collection子类
       value = objectFactory.create(targetType);
       MetaObject metaObject = configuration.newMetaObject(value);
       metaObject.addAll(list);

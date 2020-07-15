@@ -35,6 +35,10 @@ import org.apache.ibatis.transaction.Transaction;
 import org.apache.ibatis.transaction.TransactionFactory;
 
 /**
+ * 延时加载实现类：
+ * 用于预制Executor，需要执行的sql，入参等。
+ * 等待需要时，可直接调用{@link ResultLoader#loadResult()},执行sql并获取映射结果
+ *
  * @author Clinton Begin
  */
 public class ResultLoader {
@@ -42,15 +46,20 @@ public class ResultLoader {
   protected final Configuration configuration;
   protected final Executor executor;
   protected final MappedStatement mappedStatement;
+  // sql的入参
   protected final Object parameterObject;
+  // sql执行结果映射类型
   protected final Class<?> targetType;
   protected final ObjectFactory objectFactory;
   protected final CacheKey cacheKey;
   protected final BoundSql boundSql;
+  // sql执行结果提取器
   protected final ResultExtractor resultExtractor;
+  // 创建此实例的线程id
   protected final long creatorThreadId;
 
   protected boolean loaded;
+  // 执行并提取完的结果实体
   protected Object resultObject;
 
   public ResultLoader(Configuration config, Executor executor, MappedStatement mappedStatement, Object parameterObject, Class<?> targetType, CacheKey cacheKey, BoundSql boundSql) {
@@ -66,8 +75,13 @@ public class ResultLoader {
     this.creatorThreadId = Thread.currentThread().getId();
   }
 
+  /**
+   * 执行预制的sql并提取结果，入口
+   */
   public Object loadResult() throws SQLException {
+    // 执行select sql
     List<Object> list = selectList();
+    // 提取结果
     resultObject = resultExtractor.extractObjectFromList(list, targetType);
     return resultObject;
   }
@@ -75,10 +89,11 @@ public class ResultLoader {
   private <E> List<E> selectList() throws SQLException {
     Executor localExecutor = executor;
     if (Thread.currentThread().getId() != this.creatorThreadId || localExecutor.isClosed()) {
+      // 异步线程或者executor已被关闭，则获取新的executor
       localExecutor = newExecutor();
     }
     try {
-      // 执行内嵌查询
+      // Executor执行sql查询
       return localExecutor.query(mappedStatement, parameterObject, RowBounds.DEFAULT, Executor.NO_RESULT_HANDLER, cacheKey, boundSql);
     } finally {
       if (localExecutor != executor) {
@@ -96,6 +111,7 @@ public class ResultLoader {
     if (ds == null) {
       throw new ExecutorException("ResultLoader could not load lazily.  DataSource was not configured.");
     }
+    // 创建Executor主要是需要Transaction：
     final TransactionFactory transactionFactory = environment.getTransactionFactory();
     final Transaction tx = transactionFactory.newTransaction(ds, null, false);
     return configuration.newExecutor(tx, ExecutorType.SIMPLE);
