@@ -954,6 +954,7 @@ public class DefaultResultSetHandler implements ResultSetHandler {
     final Object parameterObject = instantiateParameterObject(parameterType);
     final MetaObject metaObject = configuration.newMetaObject(parameterObject);
     boolean foundValues = false;
+    // getComposites作为创建内嵌查询参数的依据
     for (ResultMapping innerResultMapping : resultMapping.getComposites()) {
       final Class<?> propType = metaObject.getSetterType(innerResultMapping.getProperty());
       final TypeHandler<?> typeHandler = typeHandlerRegistry.getTypeHandler(propType);

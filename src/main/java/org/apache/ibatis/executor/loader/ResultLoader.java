@@ -35,7 +35,7 @@ import org.apache.ibatis.transaction.Transaction;
 import org.apache.ibatis.transaction.TransactionFactory;
 
 /**
- * 延时加载实现类：
+ * 延时加载的加载逻辑实现类：
  * 用于预制Executor，需要执行的sql，入参等。
  * 等待需要时，可直接调用{@link ResultLoader#loadResult()},执行sql并获取映射结果
  *

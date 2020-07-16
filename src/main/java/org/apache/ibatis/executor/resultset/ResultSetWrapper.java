@@ -40,10 +40,14 @@ import org.apache.ibatis.type.UnknownTypeHandler;
  */
 public class ResultSetWrapper {
 
+  // 被包装的ResultSet
   private final ResultSet resultSet;
   private final TypeHandlerRegistry typeHandlerRegistry;
+  // ResultSet结果集的列名（按顺序）
   private final List<String> columnNames = new ArrayList<>();
+  // ResultSet结果集的列对应的java类名（按顺序）
   private final List<String> classNames = new ArrayList<>();
+  // ResultSet结果集的列对应的jdbc类型（按顺序）
   private final List<JdbcType> jdbcTypes = new ArrayList<>();
   private final Map<String, Map<Class<?>, TypeHandler<?>>> typeHandlerMap = new HashMap<>();
   private final Map<String, List<String>> mappedColumnNamesMap = new HashMap<>();

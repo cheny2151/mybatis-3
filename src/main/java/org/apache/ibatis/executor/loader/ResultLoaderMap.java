@@ -42,6 +42,9 @@ import org.apache.ibatis.session.ResultHandler;
 import org.apache.ibatis.session.RowBounds;
 
 /**
+ * 结合CglibProxyFactory或者JavassistProxyFactory对映射对象进行动态代理，
+ * 执行动态代理时ResultLoaderMap提供指定属性的懒加载实现
+ *
  * @author Clinton Begin
  * @author Franta Mejta
  */
@@ -49,6 +52,13 @@ public class ResultLoaderMap {
 
   private final Map<String, LoadPair> loaderMap = new HashMap<>();
 
+  /**
+   * 添加懒加载属性
+   *
+   * @param property         属性名称
+   * @param metaResultObject 延时加载的属性所属的对象
+   * @param resultLoader     对应的预制sql加载实现类
+   */
   public void addLoader(String property, MetaObject metaResultObject, ResultLoader resultLoader) {
     String upperFirst = getUppercaseFirstProperty(property);
     if (!upperFirst.equalsIgnoreCase(property) && loaderMap.containsKey(upperFirst)) {
@@ -56,6 +66,7 @@ public class ResultLoaderMap {
               + "' for query id '" + resultLoader.mappedStatement.getId()
               + " already exists in the result map. The leftmost property of all lazy loaded properties must be unique within a result map.");
     }
+    // '.'分割后第一个字符串的大写作为KEY
     loaderMap.put(upperFirst, new LoadPair(property, metaResultObject, resultLoader));
   }
 
@@ -71,10 +82,19 @@ public class ResultLoaderMap {
     return loaderMap.size();
   }
 
+  /**
+   * 判断该属性是否存在懒加载
+   *
+   * @param property 属性名
+   * @return
+   */
   public boolean hasLoader(String property) {
     return loaderMap.containsKey(property.toUpperCase(Locale.ENGLISH));
   }
 
+  /**
+   * 加载property属性
+   */
   public boolean load(String property) throws SQLException {
     LoadPair pair = loaderMap.remove(property.toUpperCase(Locale.ENGLISH));
     if (pair != null) {
@@ -102,6 +122,7 @@ public class ResultLoaderMap {
   }
 
   /**
+   * 属性名property + 属性所属的对象实例metaResultObject（懒加载的对象）+ sql加载实现ResultLoader
    * Property which was not loaded yet.
    */
   public static class LoadPair implements Serializable {
@@ -117,10 +138,12 @@ public class ResultLoaderMap {
     private final transient Object serializationCheck = new Object();
     /**
      * Meta object which sets loaded properties.
+     * 延时加载的属性所属对象
      */
     private transient MetaObject metaResultObject;
     /**
      * Result loader which loads unread properties.
+     * 加载的sql执行实现类
      */
     private transient ResultLoader resultLoader;
     /**
@@ -133,6 +156,7 @@ public class ResultLoaderMap {
     private Class<?> configurationFactory;
     /**
      * Name of the unread property.
+     * 延迟加载的字段名
      */
     private String property;
     /**
@@ -141,6 +165,7 @@ public class ResultLoaderMap {
     private String mappedStatement;
     /**
      * Parameter of the sql statement.
+     * 加载的sql查询的入参（即为resultLoader.parameterObject）
      */
     private Serializable mappedParameter;
 
@@ -155,7 +180,9 @@ public class ResultLoaderMap {
 
         /* @todo May the parameter be null? */
         if (mappedStatementParameter instanceof Serializable) {
+          // mappedStatement的id
           this.mappedStatement = resultLoader.mappedStatement.getId();
+          // 执行sql的入参
           this.mappedParameter = (Serializable) mappedStatementParameter;
 
           this.configurationFactory = resultLoader.configuration.getConfigurationFactory();
@@ -185,6 +212,7 @@ public class ResultLoaderMap {
     }
 
     public void load(final Object userObject) throws SQLException {
+      // 懒加载不执行此逻辑
       if (this.metaResultObject == null || this.resultLoader == null) {
         if (this.mappedParameter == null) {
           throw new ExecutorException("Property [" + this.property + "] cannot be loaded because "
@@ -216,6 +244,7 @@ public class ResultLoaderMap {
                 old.parameterObject, old.targetType, old.cacheKey, old.boundSql);
       }
 
+      // ⭐重点只有此行代码，调用resultLoader执行sql加载属性值，通过metaResultObject将属性值设置到属性property上
       this.metaResultObject.setValue(property, this.resultLoader.loadResult());
     }
 
