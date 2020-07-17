@@ -22,8 +22,19 @@ import java.util.Properties;
  */
 public interface Interceptor {
 
+  /**
+   * 代理拦截时，调用的方法
+   *
+   * @param invocation 拦截的方法信息：被代理对象，执行的方法和入参
+   */
   Object intercept(Invocation invocation) throws Throwable;
 
+  /**
+   * 为对象应用插件
+   *
+   * @param target 目标对象
+   * @return
+   */
   Object plugin(Object target);
 
   void setProperties(Properties properties);

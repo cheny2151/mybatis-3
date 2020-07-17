@@ -32,6 +32,9 @@ import org.apache.ibatis.transaction.TransactionFactory;
 import org.apache.ibatis.transaction.managed.ManagedTransactionFactory;
 
 /**
+ * 默认的SqlSessionFactory实现类
+ * 用于创建SqlSession
+ *
  * @author Clinton Begin
  */
 public class DefaultSqlSessionFactory implements SqlSessionFactory {
@@ -44,8 +47,11 @@ public class DefaultSqlSessionFactory implements SqlSessionFactory {
 
   @Override
   public SqlSession openSession() {
+    // 默认的Executor为Simple
     return openSessionFromDataSource(configuration.getDefaultExecutorType(), null, false);
   }
+
+  //----------------------------------- 调用#openSessionFromDataSource创建SqlSession ----------------------------------//
 
   @Override
   public SqlSession openSession(boolean autoCommit) {
@@ -71,9 +77,11 @@ public class DefaultSqlSessionFactory implements SqlSessionFactory {
   public SqlSession openSession(ExecutorType execType, boolean autoCommit) {
     return openSessionFromDataSource(execType, null, autoCommit);
   }
+  //------------------------------------------------------------------------------------------------------------------//
 
   @Override
   public SqlSession openSession(Connection connection) {
+    // 创建SqlSession
     return openSessionFromConnection(configuration.getDefaultExecutorType(), connection);
   }
 
@@ -92,6 +100,7 @@ public class DefaultSqlSessionFactory implements SqlSessionFactory {
     try {
       final Environment environment = configuration.getEnvironment();
       final TransactionFactory transactionFactory = getTransactionFactoryFromEnvironment(environment);
+      // 创建事务实例，入参为DataSource，事务级别level，是否自动提交autoCommit
       tx = transactionFactory.newTransaction(environment.getDataSource(), level, autoCommit);
       final Executor executor = configuration.newExecutor(tx, execType);
       return new DefaultSqlSession(configuration, executor, autoCommit);
@@ -103,6 +112,11 @@ public class DefaultSqlSessionFactory implements SqlSessionFactory {
     }
   }
 
+  /**
+   * 和{@link #openSessionFromDataSource}相比，主要是创建事务的入参变了
+   * 直接构造了连接实例connection，不需要通过DataSource获取connection实例了。
+   *
+   */
   private SqlSession openSessionFromConnection(ExecutorType execType, Connection connection) {
     try {
       boolean autoCommit;
@@ -115,6 +129,7 @@ public class DefaultSqlSessionFactory implements SqlSessionFactory {
       }
       final Environment environment = configuration.getEnvironment();
       final TransactionFactory transactionFactory = getTransactionFactoryFromEnvironment(environment);
+      // 创建事务实例，入参为数据库连接实例connection
       final Transaction tx = transactionFactory.newTransaction(connection);
       final Executor executor = configuration.newExecutor(tx, execType);
       return new DefaultSqlSession(configuration, executor, autoCommit);
@@ -125,6 +140,9 @@ public class DefaultSqlSessionFactory implements SqlSessionFactory {
     }
   }
 
+  /**
+   * 获取事务工厂（集成spring时，用的是SpringManagedTransaction）
+   */
   private TransactionFactory getTransactionFactoryFromEnvironment(Environment environment) {
     if (environment == null || environment.getTransactionFactory() == null) {
       return new ManagedTransactionFactory();

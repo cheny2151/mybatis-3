@@ -26,12 +26,17 @@ import java.util.Set;
 import org.apache.ibatis.reflection.ExceptionUtil;
 
 /**
+ * 继承InvocationHandler，实现JDK动态代理逻辑
+ *
  * @author Clinton Begin
  */
 public class Plugin implements InvocationHandler {
 
+  // 被代理的对象
   private final Object target;
+  // 插件实现类
   private final Interceptor interceptor;
+  // 拦截的类对应的方法集合
   private final Map<Class<?>, Set<Method>> signatureMap;
 
   private Plugin(Object target, Interceptor interceptor, Map<Class<?>, Set<Method>> signatureMap) {
@@ -40,11 +45,23 @@ public class Plugin implements InvocationHandler {
     this.signatureMap = signatureMap;
   }
 
+  /**
+   * 用于生成target的动态代理：
+   * 代理的接口类、方法信息从interceptor上的注解{@link Intercepts}提取
+   * 代理执行的方法由{@link Interceptor#intercept}实现
+   *
+   * @param target      目标对象
+   * @param interceptor 代理的拦截器
+   * @return
+   */
   public static Object wrap(Object target, Interceptor interceptor) {
+    // 拦截的类对应的方法集合
     Map<Class<?>, Set<Method>> signatureMap = getSignatureMap(interceptor);
     Class<?> type = target.getClass();
+    // 接口
     Class<?>[] interfaces = getAllInterfaces(type, signatureMap);
     if (interfaces.length > 0) {
+      // JDK动态代理
       return Proxy.newProxyInstance(
           type.getClassLoader(),
           interfaces,
@@ -66,13 +83,19 @@ public class Plugin implements InvocationHandler {
     }
   }
 
+  /**
+   * 从interceptor实例上的注解@Intercepts中
+   * 提取拦截的类对应的方法数组
+   */
   private static Map<Class<?>, Set<Method>> getSignatureMap(Interceptor interceptor) {
+    // 从注解@Intercepts中获取拦截的方法名签名
     Intercepts interceptsAnnotation = interceptor.getClass().getAnnotation(Intercepts.class);
     // issue #251
     if (interceptsAnnotation == null) {
       throw new PluginException("No @Intercepts annotation was found in interceptor " + interceptor.getClass().getName());
     }
     Signature[] sigs = interceptsAnnotation.value();
+    // 提取拦截的类对应的方法数组
     Map<Class<?>, Set<Method>> signatureMap = new HashMap<>();
     for (Signature sig : sigs) {
       Set<Method> methods = signatureMap.computeIfAbsent(sig.type(), k -> new HashSet<>());
@@ -86,11 +109,16 @@ public class Plugin implements InvocationHandler {
     return signatureMap;
   }
 
+  /**
+   * 获取所有被拦截的接口
+   */
   private static Class<?>[] getAllInterfaces(Class<?> type, Map<Class<?>, Set<Method>> signatureMap) {
     Set<Class<?>> interfaces = new HashSet<>();
+    // 遍历type和其父类的所有接口，找到被拦截的类（匹配signatureMap的key）
     while (type != null) {
       for (Class<?> c : type.getInterfaces()) {
         if (signatureMap.containsKey(c)) {
+          // 添加到代理的接口中
           interfaces.add(c);
         }
       }

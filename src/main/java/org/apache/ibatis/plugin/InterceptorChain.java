@@ -26,6 +26,13 @@ public class InterceptorChain {
 
   private final List<Interceptor> interceptors = new ArrayList<>();
 
+  /**
+   * 插件应用入口：
+   * 为target应用插件
+   *
+   * @param target 可以是ParameterHandler/ResultSetHandler/StatementHandler/Executor
+   * @return
+   */
   public Object pluginAll(Object target) {
     for (Interceptor interceptor : interceptors) {
       target = interceptor.plugin(target);
